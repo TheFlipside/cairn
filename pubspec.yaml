@@ -1,0 +1,37 @@
+name: cairn
+description: "Personal health-data aggregator: reads HealthKit/Health Connect, writes Open mHealth files, syncs to your own Nextcloud."
+# Private app — never published to pub.dev.
+publish_to: "none"
+
+# <version>+<build>. Bump the build number on every store/F-Droid upload.
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.0
+
+# Kept alphabetical to satisfy the `sort_pub_dependencies` lint.
+dependencies:
+  cupertino_icons: ^1.0.8
+  flutter:
+    sdk: flutter
+  # App-token storage in Keychain / Android Keystore (BSD-3-Clause).
+  flutter_secure_storage: ^10.3.1
+  # Single wrapper over Apple HealthKit + Android Health Connect (MIT).
+  health: ^13.3.0
+  # Permissive HTTP client (BSD-3-Clause). We implement WebDAV + Nextcloud
+  # Login Flow v2 on top of it instead of the AGPL-licensed `nextcloud` Dart
+  # client, which would otherwise relicense the whole app to AGPL.
+  http: ^1.6.0
+  # Path joining for the local OMH file cache (BSD-3-Clause).
+  path: ^1.9.1
+  # App-documents directory for the local OMH cache (BSD-3-Clause).
+  path_provider: ^2.1.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  # Strict lint set; configured in analysis_options.yaml (MIT).
+  very_good_analysis: ^10.2.0
+
+flutter:
+  uses-material-design: true
