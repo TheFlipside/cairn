@@ -82,18 +82,18 @@ requirements:
 
 - **Install Android Studio** (bundles the SDK, platform tools, and an emulator
   image), or the command-line SDK.
-- **Bump `minSdk` to 26.** Health Connect requires Android 8.0+. Edit
-  [`android/app/build.gradle.kts`](../android/app/build.gradle.kts) and replace
-  `minSdk = flutter.minSdkVersion` with `minSdk = 26`.
+- **Already configured (Phase 1), no action needed:** `minSdk = 26`
+  ([`build.gradle.kts`](../android/app/build.gradle.kts)); `MainActivity` extends
+  `FlutterFragmentActivity`; and `AndroidManifest.xml` declares the Health
+  Connect `<queries>`, the permission-rationale activity, and **READ-only**
+  permissions for the five v1 metrics (`READ_HEART_RATE`, `READ_STEPS`,
+  `READ_WEIGHT`, `READ_EXERCISE`, `READ_SLEEP`) plus `ACTIVITY_RECOGNITION`.
+  Cairn never requests WRITE (DESIGN.md §2). Background-read is deferred to
+  Phase 5. If you bump the `health` package, re-check its README for manifest
+  drift: <https://pub.dev/packages/health>.
 - **Health Connect must be present on the device/emulator.** It is built in on
   Android 14+; on older versions install the Health Connect app from the Play
   Store. The emulator needs a Google-APIs/Play system image.
-- **Declare permissions.** The `health` package needs per-type Health Connect
-  permissions plus the permission-rationale intent in `AndroidManifest.xml`, and
-  (for sync while closed) the background-read permission. Use the **current,
-  version-specific** manifest snippets from the package README rather than
-  copying stale XML: <https://pub.dev/packages/health>.
-- The app **only reads** — never request write permissions (DESIGN.md §2).
 - **Release signing (distribution only).** Local `flutter run --release` works
   out of the box (it falls back to debug signing). For a distributable build,
   create an untracked `android/key.properties` with `storeFile`, `storePassword`,
@@ -109,15 +109,14 @@ seed data via a vendor app or the Health Connect "sample data" tooling.
 
 > Requires **macOS + Xcode**. Deployment target is **iOS 13.0**.
 
-- Open `ios/Runner.xcworkspace` in Xcode, set your signing **Team**, and under
-  **Signing & Capabilities** add the **HealthKit** capability. For background
-  sync, also enable HealthKit **Background Delivery**.
-- Add usage-description strings to `ios/Runner/Info.plist`
-  (`NSHealthShareUsageDescription`, and `NSHealthUpdateUsageDescription` if the
-  toolchain requires it) explaining why Cairn reads health data — Apple rejects
-  builds without them.
-- Follow the iOS section of the `health` package README for the exact, current
-  entitlement/Info.plist keys: <https://pub.dev/packages/health>.
+- **The one manual step:** open `ios/Runner.xcworkspace` in Xcode, set your
+  signing **Team**, and under **Signing & Capabilities** add the **HealthKit**
+  capability (this writes the entitlement, which can't be set from Dart). For
+  background sync, also enable HealthKit **Background Delivery** (Phase 5).
+- `NSHealthShareUsageDescription` (read justification) is **already set** in
+  [`ios/Runner/Info.plist`](../ios/Runner/Info.plist). Cairn is read-only, so it
+  does not declare `NSHealthUpdateUsageDescription`; if a future toolchain demands
+  it at build time, add it with a read-only-framed string.
 - Note HealthKit hides read-authorisation status by design — the UI keys off
   data presence, not a permission boolean (DESIGN.md §4.2).
 

@@ -1,0 +1,52 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://cairn.health/schemas/cairn/sleep-stage-1.0.json",
+    "title": "Sleep Stage",
+    "description": "A single sleep-stage segment as reported by the OS health store (Apple HealthKit / Android Health Connect), preserved losslessly before any nightly aggregation. Custom Cairn schema (namespace 'cairn') used where no standard OMH / IEEE 1752.1 schema fits — see DESIGN.md §5.2. Field shapes mirror OMH conventions (unit-value, time-frame) but are inlined so the schema is self-contained.",
+    "type": "object",
+    "properties": {
+        "sleep_stage": {
+            "description": "The sleep stage represented by this segment.",
+            "type": "string",
+            "enum": [
+                "awake",
+                "light",
+                "deep",
+                "rem",
+                "asleep_unspecified",
+                "in_bed",
+                "out_of_bed"
+            ]
+        },
+        "effective_time_frame": {
+            "description": "The time interval covered by this stage segment.",
+            "type": "object",
+            "properties": {
+                "time_interval": {
+                    "type": "object",
+                    "properties": {
+                        "start_date_time": {
+                            "type": "string",
+                            "format": "date-time"
+                        },
+                        "end_date_time": {
+                            "type": "string",
+                            "format": "date-time"
+                        }
+                    },
+                    "required": [
+                        "start_date_time",
+                        "end_date_time"
+                    ]
+                }
+            },
+            "required": [
+                "time_interval"
+            ]
+        }
+    },
+    "required": [
+        "sleep_stage",
+        "effective_time_frame"
+    ]
+}

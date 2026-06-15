@@ -289,7 +289,7 @@ because the on-disk format is the one genuinely expensive thing to change
   `DEVELOPMENT.md`, `CHANGELOG.md`).
 - **Exit:** `dart analyze` clean, widget smoke test green, app runs.
 
-### Phase 1 — Health read + OMH mapping 🔭
+### Phase 1 — Health read + OMH mapping ✅
 
 - **Goal:** read the five v1 measures and emit schema-valid OMH datapoints,
   fully offline (no sync yet).
@@ -300,7 +300,7 @@ because the on-disk format is the one genuinely expensive thing to change
 - **Exit:** each metric reads on a real device; emitted datapoints validate
   against the OMH / IEEE 1752.1 schema library in tests (§13).
 
-### Phase 2 — Local persistence (sharded JSONL + manifest) ⬜
+### Phase 2 — Local persistence (sharded JSONL + manifest) 🔭
 
 - **Goal:** durable, append-only local cache in the documented file layout.
 - **Layers:** `storage/` (implement `OmhFileStore`: one append-only `.jsonl`

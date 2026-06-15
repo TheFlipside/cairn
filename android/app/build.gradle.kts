@@ -29,7 +29,8 @@ android {
 
     defaultConfig {
         applicationId = "io.github.theflipside.cairn"
-        minSdk = flutter.minSdkVersion
+        // Health Connect requires Android 8.0 (API 26); see DEVELOPMENT.md §3.3.
+        minSdk = 26
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

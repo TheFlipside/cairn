@@ -26,10 +26,15 @@ dependencies:
   path: ^1.9.1
   # App-documents directory for the local OMH cache (BSD-3-Clause).
   path_provider: ^2.1.5
+  # RFC 4122 v4 UUIDs for OMH datapoint header ids (MIT).
+  uuid: ^4.5.3
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
+  # Validates emitted OMH datapoints against the vendored JSON Schemas in
+  # tests (Boost Software License — permissive).
+  json_schema: ^5.2.2
   # Strict lint set; configured in analysis_options.yaml (MIT).
   very_good_analysis: ^10.2.0
 

@@ -11,8 +11,10 @@ abstract interface class OmhMapper {
   /// Converts [sample] into an Open mHealth datapoint object.
   Map<String, Object?> toDataPoint(HealthSample sample);
 
-  /// The OMH / IEEE 1752.1 schema id Cairn emits for [metric]
+  /// The schema id of the **per-sample** datapoint Cairn emits for [metric]
   /// (e.g. `omh:heart-rate`). Measures without a standard schema use the
-  /// `cairn` namespace (DESIGN.md §5.2).
+  /// `cairn` namespace (DESIGN.md §5.2). For `sleep` this is the raw
+  /// per-segment schema (`cairn:sleep-stage`); the additive nightly rollup is a
+  /// separate datapoint that carries `omh:sleep-episode` in its own header.
   String schemaIdFor(HealthMetric metric);
 }
