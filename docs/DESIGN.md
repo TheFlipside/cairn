@@ -310,18 +310,23 @@ because the on-disk format is the one genuinely expensive thing to change
 - **Exit:** write/read round-trips are stable; manifest anchors drive the
   incremental read window; appends are crash-safe.
 
-### Phase 3 — Nextcloud connection + sync 🔭
+### Phase 3 — Nextcloud connection + sync ✅
 
 - **Goal:** the core value loop — health data lands in the user's own Nextcloud.
 - **Layers:** `sync/` (`NextcloudAuth` Login Flow v2 → `SecureTokenStore` app
-  token in Keychain/Keystore; `NextcloudSyncTarget` WebDAV push/pull over
-  `http`; last-write-wins + conflict-copy detection — §6). Prominent
-  "Connect your Nextcloud" onboarding and connection-health UI.
+  token in Keychain/Keystore; `NextcloudSyncTarget` WebDAV push over `http` +
+  `xml`; last-write-wins + conflict-copy detection — §6) driven by a
+  device-local, never-synced push journal. Prominent "Connect your Nextcloud"
+  onboarding and a connection-health/"Sync now" surface.
 - **Exit:** end-to-end write path device → `/Cairn/` on a real Nextcloud;
-  offline-first cache reconciles on reconnect; conflict copies are surfaced,
-  not silently merged.
+  offline-first cache reconciles (push) on reconnect; conflict copies are
+  surfaced, not silently merged.
+- **Done as:** push + conflict-detect. The host is `https`-pinned and the app
+  password lives only in secure storage. The **bidirectional remote→local
+  pull-merge** (multi-device convergence) and per-device anchor keying are
+  deferred to the change-token / multi-device work in **Phase 8**.
 
-### Phase 4 — In-app dashboard + onboarding ⬜
+### Phase 4 — In-app dashboard + onboarding 🔭
 
 - **Goal:** a usable read path and a guided first run.
 - **Layers:** `dashboard/` (render from the local OMH cache — read path A, §9);

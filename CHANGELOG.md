@@ -35,6 +35,20 @@ All notable changes to this project are documented in this file.
   anchor — replacing the fixed look-back. `HealthMetric.slug` and
   `OmhFileStore.setSyncAnchor` added; the debug harness now persists then reads
   back from disk.
+- **Phase 3 — Nextcloud connection + sync.** Login Flow v2 (`HttpNextcloudAuth`)
+  obtains a revocable app password — never the main password — stored as one
+  bundle in OS secure storage (`FlutterSecureTokenStore`); a WebDAV client
+  (`WebDavNextcloudSyncTarget`, on `http` + `xml`, not the AGPL `nextcloud`
+  client) does `PUT`/`MKCOL`/`PROPFIND`/`GET`. `NextcloudSyncService` pushes the
+  local `/Cairn/` tree last-write-wins, driven by a device-local, never-synced
+  push journal (`sync_journal.json`): append-only shards re-upload on a size
+  delta, `manifest.json` every run. Server-side `(conflicted copy)` files are
+  surfaced, never merged. `NextcloudSyncCoordinator` ties connect → sync
+  together. Offline appends accumulate and upload on reconnect; remote→local
+  pull-merge is deferred to the multi-device phase (§8).
+- Guided "Connect your Nextcloud" screen (host → Login Flow v2 in the system
+  browser via `url_launcher` → poll) and a debug "Sync now" + connection-health
+  section on the dashboard.
 - Debug-only on-device "read & persist" harness on the dashboard.
 - `.githooks/pre-commit` blocks accidental commits of signing secrets
   (`key.properties`, `*.keystore`/`*.jks`/`*.p12`/`*.pfx`), even via `git add
@@ -57,6 +71,16 @@ All notable changes to this project are documented in this file.
   a distributable artifact.
 - Android health permissions are declared **READ-only** (no `WRITE_*`); the app
   never writes to the OS health store.
+- Nextcloud sync is **https-only**: the credentials value object rejects a
+  non-`https` server, Login Flow v2 rejects a non-`https` host, and Android sets
+  `usesCleartextTraffic=false` — Basic auth is never sent in the clear.
+- The server-returned Login Flow v2 `login`/`poll.endpoint` URLs are pinned to
+  the contacted https host, blocking a malicious server from redirecting the
+  browser hand-off (`file:`/`intent:`) or leaking the poll token to an internal
+  host (SSRF). The app password lives only in secure storage — never logged,
+  never written into the synced tree or the push journal.
+- The local-file walk ignores symlinks and refuses paths resolving outside the
+  cache; the remote conflict scan is depth-capped against a hostile server.
 
 ### Changed
 

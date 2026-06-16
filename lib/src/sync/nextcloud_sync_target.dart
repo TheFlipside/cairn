@@ -1,4 +1,68 @@
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
+
+/// One entry returned by [NextcloudSyncTarget.list] — a child file or
+/// collection found under a WebDAV directory (DESIGN.md §6).
+@immutable
+class RemoteResource {
+  /// Creates a remote resource descriptor.
+  const RemoteResource({
+    required this.path,
+    required this.isCollection,
+    this.etag,
+    this.size,
+  });
+
+  /// Server-relative WebDAV path of the resource (e.g.
+  /// `/remote.php/dav/files/alice/Cairn/steps/2026/2026-06-14.jsonl`).
+  final String path;
+
+  /// Whether this resource is a collection (directory) rather than a file.
+  final bool isCollection;
+
+  /// The resource ETag, used to detect remote changes. `null` if the server
+  /// omitted it.
+  final String? etag;
+
+  /// The content length in bytes, or `null` for collections / when omitted.
+  final int? size;
+
+  /// The final path segment (file or directory name), unescaped.
+  String get name {
+    final trimmed = path.endsWith('/')
+        ? path.substring(0, path.length - 1)
+        : path;
+    final slash = trimmed.lastIndexOf('/');
+    return Uri.decodeComponent(
+      slash < 0 ? trimmed : trimmed.substring(slash + 1),
+    );
+  }
+}
+
+/// Base class for failures talking to the Nextcloud WebDAV endpoint.
+class NextcloudSyncException implements Exception {
+  /// Creates a sync exception with a human-readable [message] and optional
+  /// HTTP [statusCode].
+  const NextcloudSyncException(this.message, {this.statusCode});
+
+  /// Description of what failed.
+  final String message;
+
+  /// The offending HTTP status code, if the failure was an HTTP response.
+  final int? statusCode;
+
+  @override
+  String toString() => statusCode == null
+      ? 'NextcloudSyncException: $message'
+      : 'NextcloudSyncException($statusCode): $message';
+}
+
+/// Thrown when a WebDAV `GET`/`PROPFIND` targets a path the server reports as
+/// `404 Not Found`.
+class NextcloudNotFoundException extends NextcloudSyncException {
+  /// Creates a not-found exception for [path].
+  const NextcloudNotFoundException(String path)
+    : super('Not found: $path', statusCode: 404);
+}
 
 /// Remote Nextcloud target for the `/Cairn/` file tree, spoken over WebDAV on
 /// top of a permissive HTTP client (DESIGN.md §6).
@@ -7,15 +71,20 @@ import 'dart:typed_data';
 /// client, to keep the app under the MIT licence.
 abstract interface class NextcloudSyncTarget {
   /// Uploads [bytes] to [remotePath] (WebDAV `PUT`), creating parent
-  /// collections as needed.
-  Future<void> putFile({
+  /// collections as needed. Returns the stored resource's ETag if the server
+  /// provided one. [remotePath] is relative to the account's WebDAV root
+  /// (e.g. `Cairn/steps/2026/2026-06-14.jsonl`).
+  Future<String?> putFile({
     required String remotePath,
     required Uint8List bytes,
   });
 
-  /// Lists the file paths directly under [remoteDir] (WebDAV `PROPFIND`).
-  Future<List<String>> list(String remoteDir);
+  /// Lists the immediate children of [remoteDir] (WebDAV `PROPFIND`,
+  /// `Depth: 1`). [remoteDir] is relative to the account's WebDAV root. The
+  /// directory's own entry is excluded.
+  Future<List<RemoteResource>> list(String remoteDir);
 
-  /// Downloads the file at [remotePath] (WebDAV `GET`).
+  /// Downloads the file at [remotePath] (WebDAV `GET`). Throws
+  /// [NextcloudNotFoundException] if the server returns `404`.
   Future<Uint8List> getFile(String remotePath);
 }

@@ -26,8 +26,13 @@ dependencies:
   path: ^1.9.1
   # App-documents directory for the local OMH cache (BSD-3-Clause).
   path_provider: ^2.1.5
+  # Opens the Nextcloud Login Flow v2 URL in the system browser, instead of
+  # embedding a webview (BSD-3-Clause).
+  url_launcher: ^6.3.1
   # RFC 4122 v4 UUIDs for OMH datapoint header ids (MIT).
   uuid: ^4.5.3
+  # Parses the WebDAV PROPFIND multistatus XML response (MIT).
+  xml: ^6.5.0
 
 dev_dependencies:
   flutter_test:

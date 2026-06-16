@@ -1,0 +1,89 @@
+import 'dart:io';
+
+import 'package:cairn/src/sync/nextcloud_auth.dart';
+import 'package:cairn/src/sync/nextcloud_credentials.dart';
+import 'package:cairn/src/sync/nextcloud_sync_service.dart';
+import 'package:cairn/src/sync/nextcloud_sync_target.dart';
+import 'package:cairn/src/sync/secure_token_store.dart';
+import 'package:cairn/src/sync/sync_journal.dart';
+import 'package:cairn/src/sync/webdav_nextcloud_sync_target.dart';
+
+/// Builds the WebDAV target for a set of credentials. Injectable so tests can
+/// substitute an in-memory target.
+typedef SyncTargetFactory =
+    NextcloudSyncTarget Function(NextcloudCredentials credentials);
+
+/// Ties the sync pieces together: Login Flow v2 auth, secure credential
+/// storage, and the WebDAV push (DESIGN.md §6). Pure Dart (no Flutter) so the
+/// whole connect-and-sync flow is unit-testable with fakes.
+///
+/// The browser hand-off and poll loop live in the UI; this coordinator exposes
+/// the steps it drives: [begin], [pollAndStore], and [syncNow].
+final class NextcloudSyncCoordinator {
+  /// Creates a coordinator. [targetFactory] defaults to the real WebDAV target.
+  NextcloudSyncCoordinator({
+    required this.auth,
+    required this.tokenStore,
+    required this.localRoot,
+    required this.journalStore,
+    SyncTargetFactory? targetFactory,
+  }) : _targetFactory =
+           targetFactory ??
+           ((credentials) =>
+               WebDavNextcloudSyncTarget(credentials: credentials));
+
+  /// Login Flow v2 client.
+  final NextcloudAuth auth;
+
+  /// Secure storage for the resulting credentials.
+  final SecureTokenStore tokenStore;
+
+  /// The local `/Cairn` directory pushed by [syncNow].
+  final Directory localRoot;
+
+  /// Persists the device-local push journal.
+  final JsonSyncJournalStore journalStore;
+
+  final SyncTargetFactory _targetFactory;
+
+  /// Begins Login Flow v2 against [host]; the caller opens
+  /// `session.loginUrl` in the browser, then polls via [pollAndStore].
+  Future<LoginFlowSession> begin(Uri host) => auth.begin(host);
+
+  /// Polls [session] once. If the user has authorised, stores the returned
+  /// credentials and returns them; otherwise returns `null` (still pending) so
+  /// the caller can poll again.
+  Future<NextcloudCredentials?> pollAndStore(LoginFlowSession session) async {
+    final credentials = await auth.poll(session);
+    if (credentials != null) {
+      await tokenStore.writeCredentials(credentials);
+    }
+    return credentials;
+  }
+
+  /// The stored credentials, or `null` if not connected.
+  Future<NextcloudCredentials?> currentCredentials() =>
+      tokenStore.readCredentials();
+
+  /// Whether credentials are stored.
+  Future<bool> isConnected() async =>
+      await tokenStore.readCredentials() != null;
+
+  /// Clears the stored credentials (disconnect).
+  Future<void> disconnect() => tokenStore.deleteCredentials();
+
+  /// Pushes the local cache to Nextcloud using the stored credentials.
+  /// Throws [StateError] if not connected.
+  Future<SyncReport> syncNow() async {
+    final credentials = await tokenStore.readCredentials();
+    if (credentials == null) {
+      throw StateError('Not connected to Nextcloud');
+    }
+    final service = NextcloudSyncService(
+      target: _targetFactory(credentials),
+      localRoot: localRoot,
+      journalStore: journalStore,
+    );
+    return service.push();
+  }
+}

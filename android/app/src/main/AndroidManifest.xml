@@ -13,11 +13,17 @@
     <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED"/>
     <!-- Required to read step/fitness data. -->
     <uses-permission android:name="android.permission.ACTIVITY_RECOGNITION"/>
+    <!-- WebDAV sync to the user's Nextcloud + Login Flow v2 (DESIGN.md §6). -->
+    <uses-permission android:name="android.permission.INTERNET"/>
 
     <application
         android:label="cairn"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:usesCleartextTraffic="false">
+        <!-- usesCleartextTraffic=false: OS-level backstop so no dependency can
+             ever open an http:// connection; Cairn only talks https anyway. -->
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -76,6 +82,12 @@
         <package android:name="com.google.android.apps.healthdata" />
         <intent>
             <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+        </intent>
+        <!-- url_launcher: open the Nextcloud Login Flow v2 URL in a browser. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <category android:name="android.intent.category.BROWSABLE" />
+            <data android:scheme="https" />
         </intent>
     </queries>
 </manifest>
