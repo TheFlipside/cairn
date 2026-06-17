@@ -1,3 +1,4 @@
+import 'package:cairn/l10n/app_localizations.dart';
 import 'package:cairn/src/health/health_metric.dart';
 import 'package:cairn/src/health/health_source.dart';
 import 'package:cairn/src/query/display_readings.dart';
@@ -66,8 +67,14 @@ NightSleep _sampleNight() {
 }
 
 void main() {
-  Widget app(List<NightSleep> nights) => MaterialApp(
-    home: SleepPage(
+  Widget wrap(Widget home) => MaterialApp(
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: home,
+  );
+
+  Widget app(List<NightSleep> nights) => wrap(
+    SleepPage(
       query: _FakeQuery(nights),
       revision: ValueNotifier<int>(0),
       onRefresh: () async {},
@@ -100,8 +107,8 @@ void main() {
     final query = _FakeQuery([]);
     final revision = ValueNotifier<int>(0);
     await tester.pumpWidget(
-      MaterialApp(
-        home: SleepPage(
+      wrap(
+        SleepPage(
           query: query,
           revision: revision,
           onRefresh: () async {},

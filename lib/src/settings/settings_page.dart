@@ -1,9 +1,11 @@
 import 'dart:async';
 
+import 'package:cairn/l10n/app_localizations.dart';
 import 'package:cairn/src/dashboard/connect_nextcloud_page.dart';
 import 'package:cairn/src/health/health_metric.dart';
 import 'package:cairn/src/onboarding/setup_guide_page.dart';
 import 'package:cairn/src/profile/profile.dart';
+import 'package:cairn/src/settings/locale_controller.dart';
 import 'package:cairn/src/shell/cairn_services.dart';
 import 'package:cairn/src/storage/health_ingest_service.dart';
 import 'package:cairn/src/sync/nextcloud_sync_target.dart';
@@ -11,13 +13,21 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 /// Product settings: Nextcloud connection + manual sync, the profile editor
-/// (height + date of birth for BMI), and a debug-only developer section.
+/// (height + date of birth for BMI), the app-language picker, and a debug-only
+/// developer section.
 class SettingsPage extends StatefulWidget {
   /// Creates the settings page.
-  const SettingsPage({required this.services, super.key});
+  const SettingsPage({
+    required this.services,
+    required this.localeController,
+    super.key,
+  });
 
   /// Shared app services.
   final CairnServices services;
+
+  /// The app-wide locale source, edited by the language picker.
+  final LocaleController localeController;
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -25,7 +35,8 @@ class SettingsPage extends StatefulWidget {
 
 class _SettingsPageState extends State<SettingsPage> {
   final TextEditingController _height = TextEditingController();
-  String _connection = 'Checking…';
+  bool _connLoaded = false;
+  String? _account; // login@host when connected, null otherwise
   String _syncStatus = '';
   String _debugStatus = '';
   Profile _profile = Profile.empty();
@@ -48,8 +59,9 @@ class _SettingsPageState extends State<SettingsPage> {
     if (!mounted) return;
     final profile = widget.services.profile.value;
     setState(() {
-      _connection = credentials == null
-          ? 'Not connected'
+      _connLoaded = true;
+      _account = credentials == null
+          ? null
           : '${credentials.loginName}@${credentials.server.host}';
       _profile = profile;
       _height.text = profile.heightCm == null
@@ -76,27 +88,31 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _syncNow() async {
+    final l10n = AppLocalizations.of(context);
     setState(() {
       _syncing = true;
-      _syncStatus = 'Syncing…';
+      _syncStatus = l10n.settingsSyncing;
     });
     String status;
     try {
       if (!await widget.services.coordinator.isConnected()) {
-        status = 'Connect a Nextcloud first.';
+        status = l10n.settingsConnectFirst;
       } else {
         final report = await widget.services.coordinator.syncNow();
         final conflicts = report.hasConflicts
-            ? ' · ${report.conflicts.length} conflicts'
+            ? ' · ${l10n.settingsSyncConflicts(report.conflicts.length)}'
             : '';
         status =
-            '${report.pushed.length} pushed, '
-            '${report.skipped} up to date$conflicts';
+            '${l10n.settingsSyncResult(report.pushed.length, report.skipped)}'
+            '$conflicts';
       }
     } on NextcloudSyncException catch (e) {
-      status = 'Sync failed: ${e.message}';
+      // NextcloudSyncException.message is a controlled, non-sensitive string.
+      status = l10n.settingsSyncFailed(e.message);
     } on Exception catch (e) {
-      status = 'Sync failed: $e';
+      // Unexpected/untyped error → generic message; never echo the raw cause.
+      debugPrint('Sync failed: $e');
+      status = l10n.settingsSyncFailedGeneric;
     }
     if (!mounted) return;
     setState(() {
@@ -106,17 +122,18 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _saveHeight() async {
+    final l10n = AppLocalizations.of(context);
+    final messenger = ScaffoldMessenger.of(context);
     final text = _height.text.trim();
     double? value;
     if (text.isNotEmpty) {
-      final parsed = double.tryParse(text);
+      // Accept a comma decimal separator (German keypads) before parsing.
+      final parsed = double.tryParse(text.replaceAll(',', '.'));
       // Reject non-finite (`Infinity`/`NaN` parse) and implausible heights;
       // a non-finite value would also crash the JSON encoder on write.
       if (parsed == null || !parsed.isFinite || parsed < 30 || parsed > 300) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Enter a height between 30 and 300 cm.'),
-          ),
+        messenger.showSnackBar(
+          SnackBar(content: Text(l10n.settingsHeightInvalid)),
         );
         return;
       }
@@ -132,9 +149,11 @@ class _SettingsPageState extends State<SettingsPage> {
     if (!mounted) return;
     widget.services.profile.value = next; // notify Home's BMI card
     setState(() => _profile = next);
-    ScaffoldMessenger.of(context).showSnackBar(
+    messenger.showSnackBar(
       SnackBar(
-        content: Text(value == null ? 'Height cleared' : 'Height saved'),
+        content: Text(
+          value == null ? l10n.settingsHeightCleared : l10n.settingsHeightSaved,
+        ),
       ),
     );
   }
@@ -153,6 +172,12 @@ class _SettingsPageState extends State<SettingsPage> {
     if (!mounted) return;
     widget.services.profile.value = next; // notify Home's BMI card
     setState(() => _profile = next);
+  }
+
+  void _selectLocale(String? code) {
+    unawaited(
+      widget.localeController.setLocale(code == null ? null : Locale(code)),
+    );
   }
 
   Future<void> _ingestDebug() async {
@@ -181,13 +206,17 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final dob = _profile.dateOfBirth;
+    final connectionText = !_connLoaded
+        ? l10n.settingsConnChecking
+        : (_account ?? l10n.settingsConnNotConnected);
     return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
+      appBar: AppBar(title: Text(l10n.settingsTitle)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          Text('Nextcloud', style: theme.textTheme.titleMedium),
+          Text(l10n.settingsNextcloud, style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
           Card(
             child: Padding(
@@ -195,7 +224,7 @@ class _SettingsPageState extends State<SettingsPage> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(_connection),
+                  Text(connectionText),
                   if (_syncStatus.isNotEmpty) ...[
                     const SizedBox(height: 8),
                     Text(_syncStatus, style: theme.textTheme.bodySmall),
@@ -206,15 +235,15 @@ class _SettingsPageState extends State<SettingsPage> {
                     children: [
                       OutlinedButton(
                         onPressed: _syncing ? null : _connect,
-                        child: const Text('Connect'),
+                        child: Text(l10n.actionConnect),
                       ),
                       OutlinedButton(
                         onPressed: _syncing ? null : _disconnect,
-                        child: const Text('Disconnect'),
+                        child: Text(l10n.settingsActionDisconnect),
                       ),
                       FilledButton(
                         onPressed: _syncing ? null : _syncNow,
-                        child: const Text('Sync now'),
+                        child: Text(l10n.settingsActionSyncNow),
                       ),
                     ],
                   ),
@@ -223,13 +252,9 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           const SizedBox(height: 24),
-          Text('Profile', style: theme.textTheme.titleMedium),
+          Text(l10n.settingsProfile, style: theme.textTheme.titleMedium),
           const SizedBox(height: 4),
-          Text(
-            'Used to compute your BMI from the latest synced weight. Stored in '
-            'your Nextcloud.',
-            style: theme.textTheme.bodySmall,
-          ),
+          Text(l10n.settingsProfileDesc, style: theme.textTheme.bodySmall),
           const SizedBox(height: 8),
           Card(
             child: Padding(
@@ -242,8 +267,8 @@ class _SettingsPageState extends State<SettingsPage> {
                         child: TextField(
                           controller: _height,
                           keyboardType: TextInputType.number,
-                          decoration: const InputDecoration(
-                            labelText: 'Height',
+                          decoration: InputDecoration(
+                            labelText: l10n.settingsHeightLabel,
                             suffixText: 'cm',
                           ),
                         ),
@@ -251,16 +276,16 @@ class _SettingsPageState extends State<SettingsPage> {
                       const SizedBox(width: 12),
                       FilledButton(
                         onPressed: _saveHeight,
-                        child: const Text('Save'),
+                        child: Text(l10n.actionSave),
                       ),
                     ],
                   ),
                   ListTile(
                     contentPadding: EdgeInsets.zero,
-                    title: const Text('Date of birth'),
+                    title: Text(l10n.settingsDob),
                     subtitle: Text(
                       dob == null
-                          ? 'Not set'
+                          ? l10n.settingsDobNotSet
                           : '${dob.year}-${_two(dob.month)}-${_two(dob.day)}',
                     ),
                     trailing: const Icon(Icons.calendar_today),
@@ -271,15 +296,43 @@ class _SettingsPageState extends State<SettingsPage> {
             ),
           ),
           const SizedBox(height: 24),
-          Text('Help', style: theme.textTheme.titleMedium),
+          Text(l10n.settingsLanguage, style: theme.textTheme.titleMedium),
+          const SizedBox(height: 8),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: DropdownButton<String?>(
+                value: widget.localeController.value?.languageCode,
+                isExpanded: true,
+                underline: const SizedBox.shrink(),
+                onChanged: _selectLocale,
+                items: [
+                  // The null value is the "follow system" sentinel; it is left
+                  // implicit because avoid_redundant_argument_values forbids a
+                  // literal `value: null`.
+                  DropdownMenuItem<String?>(
+                    child: Text(l10n.settingsLanguageSystem),
+                  ),
+                  const DropdownMenuItem<String?>(
+                    value: 'en',
+                    child: Text('English'),
+                  ),
+                  const DropdownMenuItem<String?>(
+                    value: 'de',
+                    child: Text('Deutsch'),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(l10n.settingsHelp, style: theme.textTheme.titleMedium),
           const SizedBox(height: 8),
           Card(
             child: ListTile(
               leading: const Icon(Icons.help_outline),
-              title: const Text('Getting your data in'),
-              subtitle: const Text(
-                'Set up your health app, wearable and permissions',
-              ),
+              title: Text(l10n.settingsHelpGuideTitle),
+              subtitle: Text(l10n.settingsHelpGuideSubtitle),
               trailing: const Icon(Icons.chevron_right),
               onTap: () => Navigator.of(context).push<void>(
                 MaterialPageRoute<void>(
@@ -290,11 +343,11 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           if (kDebugMode) ...[
             const SizedBox(height: 24),
-            Text('Developer', style: theme.textTheme.titleMedium),
+            Text(l10n.settingsDeveloper, style: theme.textTheme.titleMedium),
             const SizedBox(height: 8),
             OutlinedButton(
               onPressed: _ingestDebug,
-              child: const Text('Ingest from health store'),
+              child: Text(l10n.settingsDevIngest),
             ),
             if (_debugStatus.isNotEmpty)
               Padding(

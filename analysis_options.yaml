@@ -3,6 +3,10 @@
 include: package:very_good_analysis/analysis_options.yaml
 
 analyzer:
+  # Generated localization sources (flutter gen-l10n) are not hand-written and
+  # are regenerated on `flutter pub get`; exclude them from the strict lints.
+  exclude:
+    - lib/l10n/app_localizations*.dart
   language:
     strict-casts: true
     strict-inference: true

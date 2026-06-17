@@ -16,6 +16,10 @@ dependencies:
   fl_chart: ^1.0.0
   flutter:
     sdk: flutter
+  # Flutter's official localization delegates (BSD-3-Clause); pairs with the
+  # `gen-l10n` ARB workflow configured in l10n.yaml.
+  flutter_localizations:
+    sdk: flutter
   # App-token storage in Keychain / Android Keystore (BSD-3-Clause).
   flutter_secure_storage: ^10.3.1
   # Single wrapper over Apple HealthKit + Android Health Connect (MIT).
@@ -24,6 +28,9 @@ dependencies:
   # Login Flow v2 on top of it instead of the AGPL-licensed `nextcloud` Dart
   # client, which would otherwise relicense the whole app to AGPL.
   http: ^1.6.0
+  # Locale-aware message lookup + number/date formatting for i18n (BSD-3-Clause).
+  # Version is left to Flutter's pin to stay compatible with flutter_localizations.
+  intl: any
   # Path joining for the local OMH file cache (BSD-3-Clause).
   path: ^1.9.1
   # App-documents directory for the local OMH cache (BSD-3-Clause).
@@ -51,3 +58,7 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  # Generate localization sources from lib/l10n/*.arb (see l10n.yaml). The
+  # generated app_localizations*.dart files are regenerated on `flutter pub get`
+  # and are gitignored.
+  generate: true

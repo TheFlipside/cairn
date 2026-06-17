@@ -1,3 +1,4 @@
+import 'package:cairn/l10n/app_localizations.dart';
 import 'package:cairn/src/sync/nextcloud_auth.dart';
 import 'package:cairn/src/sync/nextcloud_sync_coordinator.dart';
 import 'package:cairn/src/sync/nextcloud_sync_target.dart';
@@ -49,14 +50,15 @@ class _ConnectNextcloudPageState extends State<ConnectNextcloudPage> {
   }
 
   Future<void> _connect() async {
+    final l10n = AppLocalizations.of(context);
     final host = _normaliseHost(_hostController.text);
     if (host == null) {
-      setState(() => _status = 'Enter your Nextcloud address (https).');
+      setState(() => _status = l10n.connectEnterAddress);
       return;
     }
     setState(() {
       _busy = true;
-      _status = 'Starting login…';
+      _status = l10n.connectStarting;
     });
     try {
       final session = await widget.coordinator.begin(host);
@@ -65,19 +67,22 @@ class _ConnectNextcloudPageState extends State<ConnectNextcloudPage> {
         mode: LaunchMode.externalApplication,
       );
       if (!launched) {
-        _fail('Could not open the browser for login.');
+        _fail(l10n.connectBrowserFailed);
         return;
       }
       if (!mounted) return;
-      setState(() => _status = 'Waiting for browser authorisation…');
-      await _pollUntilConnected(session);
+      setState(() => _status = l10n.connectWaiting);
+      await _pollUntilConnected(session, l10n);
     } on NextcloudSyncException catch (error) {
       _fail(error.message);
     } on FormatException catch (error) {
-      _fail('Invalid host: ${error.message}');
+      _fail(l10n.connectInvalidHost(error.message));
     } on Exception catch (error) {
       // Fail-closed: any unexpected error must surface, never freeze the UI.
-      _fail('Could not connect: $error');
+      // The host is user-supplied and network errors aid the user's own
+      // diagnosis; the credential-store step is wrapped in a typed
+      // NextcloudSyncException, so no secret reaches this generic path.
+      _fail(l10n.connectGenericError('$error'));
     } finally {
       // Last resort: if a non-Exception Error escaped (it still propagates to
       // the zone handler), at least re-enable the UI so the button isn't stuck.
@@ -90,7 +95,10 @@ class _ConnectNextcloudPageState extends State<ConnectNextcloudPage> {
     }
   }
 
-  Future<void> _pollUntilConnected(LoginFlowSession session) async {
+  Future<void> _pollUntilConnected(
+    LoginFlowSession session,
+    AppLocalizations l10n,
+  ) async {
     _polling = true;
     final deadline = DateTime.now().add(_pollTimeout);
     while (_polling && mounted && DateTime.now().isBefore(deadline)) {
@@ -109,18 +117,17 @@ class _ConnectNextcloudPageState extends State<ConnectNextcloudPage> {
         // Transient network/DNS/timeout blip (common on emulators) — show the
         // cause but keep polling until the deadline rather than aborting.
         if (mounted) {
-          final cause = error.message;
-          setState(() => _status = 'Network issue, retrying… ($cause)');
+          setState(() => _status = l10n.connectRetrying(error.message));
         }
       } on Exception catch (error) {
         // Fail-closed: e.g. a secure-storage PlatformException on the store
         // step must show a message, not leave the screen stuck "waiting".
-        _fail('Could not complete connection: $error');
+        _fail(l10n.connectCompleteError('$error'));
         return;
       }
       await Future<void>.delayed(_pollInterval);
     }
-    if (_polling) _fail('Timed out waiting for authorisation.');
+    if (_polling) _fail(l10n.connectTimedOut);
   }
 
   void _fail(String message) {
@@ -134,8 +141,9 @@ class _ConnectNextcloudPageState extends State<ConnectNextcloudPage> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
-      appBar: AppBar(title: const Text('Connect your Nextcloud')),
+      appBar: AppBar(title: Text(l10n.connectTitle)),
       body: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
@@ -146,16 +154,16 @@ class _ConnectNextcloudPageState extends State<ConnectNextcloudPage> {
               enabled: !_busy,
               autocorrect: false,
               keyboardType: TextInputType.url,
-              decoration: const InputDecoration(
-                labelText: 'Nextcloud address',
-                hintText: 'cloud.example.com',
-                border: OutlineInputBorder(),
+              decoration: InputDecoration(
+                labelText: l10n.connectAddressLabel,
+                hintText: l10n.connectAddressHint,
+                border: const OutlineInputBorder(),
               ),
             ),
             const SizedBox(height: 16),
             FilledButton(
               onPressed: _busy ? null : _connect,
-              child: const Text('Connect'),
+              child: Text(l10n.actionConnect),
             ),
             const SizedBox(height: 16),
             if (_busy) const Center(child: CircularProgressIndicator()),

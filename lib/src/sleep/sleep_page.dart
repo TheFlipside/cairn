@@ -1,3 +1,4 @@
+import 'package:cairn/l10n/app_localizations.dart';
 import 'package:cairn/src/onboarding/setup_guide_page.dart';
 import 'package:cairn/src/query/health_query_service.dart';
 import 'package:cairn/src/query/night_sleep.dart';
@@ -66,7 +67,7 @@ class _SleepPageState extends State<SleepPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Sleep')),
+      appBar: AppBar(title: Text(AppLocalizations.of(context).sleepTitle)),
       body: RefreshIndicator(
         onRefresh: _refresh,
         child: FutureBuilder<List<NightSleep>>(
@@ -86,46 +87,47 @@ class _SleepPageState extends State<SleepPage> {
     );
   }
 
-  Widget _empty(BuildContext context) => ListView(
-    padding: const EdgeInsets.all(24),
-    children: [
-      const SizedBox(height: 80),
-      Icon(
-        Icons.bedtime_outlined,
-        size: 48,
-        color: Theme.of(context).colorScheme.primary,
-      ),
-      const SizedBox(height: 16),
-      Text(
-        'No sleep data yet',
-        textAlign: TextAlign.center,
-        style: Theme.of(context).textTheme.titleMedium,
-      ),
-      const SizedBox(height: 8),
-      const Text(
-        'Track a night with a wearable or your health app, then refresh.',
-        textAlign: TextAlign.center,
-      ),
-      const SizedBox(height: 16),
-      Center(
-        child: TextButton.icon(
-          onPressed: () => Navigator.of(context).push<void>(
-            MaterialPageRoute<void>(builder: (_) => const SetupGuidePage()),
-          ),
-          icon: const Icon(Icons.help_outline),
-          label: const Text('How to set this up'),
+  Widget _empty(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: [
+        const SizedBox(height: 80),
+        Icon(
+          Icons.bedtime_outlined,
+          size: 48,
+          color: Theme.of(context).colorScheme.primary,
         ),
-      ),
-    ],
-  );
+        const SizedBox(height: 16),
+        Text(
+          l10n.sleepEmptyTitle,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.titleMedium,
+        ),
+        const SizedBox(height: 8),
+        Text(l10n.sleepEmptyBody, textAlign: TextAlign.center),
+        const SizedBox(height: 16),
+        Center(
+          child: TextButton.icon(
+            onPressed: () => Navigator.of(context).push<void>(
+              MaterialPageRoute<void>(builder: (_) => const SetupGuidePage()),
+            ),
+            icon: const Icon(Icons.help_outline),
+            label: Text(l10n.sleepHowToSetUp),
+          ),
+        ),
+      ],
+    );
+  }
 
   Widget _content(BuildContext context, List<NightSleep> nights) {
     final last = nights.first;
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text('Last night', style: theme.textTheme.titleLarge),
+        Text(l10n.sleepLastNight, style: theme.textTheme.titleLarge),
         const SizedBox(height: 4),
         Text(
           _dateLabel(last),
@@ -137,18 +139,18 @@ class _SleepPageState extends State<SleepPage> {
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
-              'Multiple sources tracked this night; totals may overlap.',
+              l10n.sleepMultipleSources,
               style: theme.textTheme.bodySmall,
             ),
           ),
         const SizedBox(height: 24),
-        _SectionTitle('Stages through the night', theme),
+        _SectionTitle(l10n.sleepStagesSection, theme),
         HypnogramChart(night: last),
         const SizedBox(height: 24),
-        _SectionTitle('Where the night went', theme),
+        _SectionTitle(l10n.sleepBreakdownSection, theme),
         StageBreakdown(night: last),
         const SizedBox(height: 24),
-        _SectionTitle('Last $_trendNights nights', theme),
+        _SectionTitle(l10n.sleepTrendSection(_trendNights), theme),
         SleepTrendChart(nights: nights),
         const SizedBox(height: 24),
       ],

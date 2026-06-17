@@ -1,3 +1,5 @@
+import 'package:cairn/l10n/app_localizations.dart';
+import 'package:cairn/l10n/app_localizations_en.dart';
 import 'package:cairn/src/onboarding/setup_guide.dart';
 import 'package:cairn/src/onboarding/setup_guide_page.dart';
 import 'package:flutter/material.dart';
@@ -6,6 +8,8 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   Widget app(TargetPlatform platform) => MaterialApp(
     theme: ThemeData(platform: platform),
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
     home: const SetupGuidePage(),
   );
 
@@ -27,9 +31,13 @@ void main() {
   });
 
   test('setupGuideFor selects per platform', () {
-    expect(setupGuideFor(TargetPlatform.iOS).platformLabel, 'iPhone');
-    expect(setupGuideFor(TargetPlatform.android).platformLabel, 'Android');
+    final l10n = AppLocalizationsEn();
+    expect(setupGuideFor(TargetPlatform.iOS, l10n).platformLabel, 'iPhone');
+    expect(
+      setupGuideFor(TargetPlatform.android, l10n).platformLabel,
+      'Android',
+    );
     // Non-mobile falls back to the Android guide.
-    expect(setupGuideFor(TargetPlatform.linux).platformLabel, 'Android');
+    expect(setupGuideFor(TargetPlatform.linux, l10n).platformLabel, 'Android');
   });
 }

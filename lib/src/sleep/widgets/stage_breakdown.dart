@@ -1,3 +1,4 @@
+import 'package:cairn/l10n/app_localizations.dart';
 import 'package:cairn/src/format/duration_format.dart';
 import 'package:cairn/src/health/health_source.dart';
 import 'package:cairn/src/query/night_sleep.dart';
@@ -16,13 +17,14 @@ class StageBreakdown extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final entries =
         night.perStage.entries.where((e) => e.value > Duration.zero).toList()
           ..sort((a, b) => stageDepth(a.key).compareTo(stageDepth(b.key)));
 
     if (entries.isEmpty) {
       return Text(
-        'No per-stage breakdown for this night.',
+        l10n.sleepNoStageBreakdown,
         style: theme.textTheme.bodyMedium,
       );
     }
@@ -73,6 +75,7 @@ class _LegendRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
@@ -86,9 +89,9 @@ class _LegendRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          Expanded(child: Text(stageLabel(stage))),
+          Expanded(child: Text(stageLabel(l10n, stage))),
           Text(
-            formatHoursMinutes(duration),
+            formatHoursMinutes(duration, l10n),
             style: theme.textTheme.bodyMedium,
           ),
         ],

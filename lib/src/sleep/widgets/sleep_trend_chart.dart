@@ -1,16 +1,8 @@
+import 'package:cairn/l10n/app_localizations.dart';
 import 'package:cairn/src/query/night_sleep.dart';
+import 'package:cairn/src/sleep/sleep_visuals.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
-
-const List<String> _weekdays = [
-  'Mon',
-  'Tue',
-  'Wed',
-  'Thu',
-  'Fri',
-  'Sat',
-  'Sun',
-];
 
 /// A bar per night showing total hours asleep, oldest → newest.
 class SleepTrendChart extends StatelessWidget {
@@ -23,11 +15,9 @@ class SleepTrendChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     if (nights.isEmpty) {
-      return Text(
-        'Not enough nights yet for a trend.',
-        style: theme.textTheme.bodyMedium,
-      );
+      return Text(l10n.sleepTrendEmpty, style: theme.textTheme.bodyMedium);
     }
     final ordered = [...nights]..sort((a, b) => a.night.compareTo(b.night));
     final maxHours = ordered
@@ -66,7 +56,7 @@ class SleepTrendChart extends StatelessWidget {
                     return const SizedBox.shrink();
                   }
                   return Text(
-                    _weekdays[ordered[i].night.weekday - 1],
+                    weekdayShort(l10n, ordered[i].night.weekday),
                     style: theme.textTheme.bodySmall,
                   );
                 },

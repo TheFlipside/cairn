@@ -1,10 +1,14 @@
+import 'package:cairn/l10n/app_localizations.dart';
 import 'package:cairn/src/format/duration_format.dart';
+import 'package:cairn/src/format/locale_format.dart';
 import 'package:cairn/src/health/health_metric.dart';
 import 'package:cairn/src/profile/bmi.dart';
+import 'package:cairn/src/profile/bmi_labels.dart';
 import 'package:cairn/src/profile/profile.dart';
 import 'package:cairn/src/query/display_readings.dart';
 import 'package:cairn/src/query/night_sleep.dart';
 import 'package:cairn/src/shell/cairn_services.dart';
+import 'package:cairn/src/shell/refresh_feedback.dart';
 import 'package:flutter/material.dart';
 
 /// The overview home screen: at-a-glance latest values read from the local OMH
@@ -67,19 +71,21 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _refresh() async {
+    final messenger = ScaffoldMessenger.of(context);
+    final l10n = AppLocalizations.of(context);
     setState(() => _busy = true);
-    final error = await widget.services.refresh(); // bump reloads via _reload
+    final result = await widget.services.refresh(); // bump reloads via _reload
     if (!mounted) return;
     setState(() => _busy = false);
-    if (error != null) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(error)));
+    final message = result.localizedMessage(l10n);
+    if (message != null) {
+      messenger.showSnackBar(SnackBar(content: Text(message)));
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     return Scaffold(
       appBar: AppBar(
         title: const Text('Cairn'),
@@ -93,7 +99,7 @@ class _HomePageState extends State<HomePage> {
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : const Icon(Icons.refresh),
-            tooltip: 'Refresh',
+            tooltip: l10n.actionRefresh,
           ),
         ],
       ),
@@ -113,6 +119,8 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _content(BuildContext context, _Overview data) {
+    final l10n = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).toLanguageTag();
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -130,19 +138,21 @@ class _HomePageState extends State<HomePage> {
             Expanded(
               child: _StatCard(
                 icon: Icons.directions_walk,
-                label: 'Steps today',
+                label: l10n.homeStepsToday,
                 value: data.steps == null
                     ? '—'
-                    : data.steps!.round().toString(),
+                    : formatInteger(data.steps!, locale: locale),
               ),
             ),
             Expanded(
               child: _StatCard(
                 icon: Icons.favorite_outline,
-                label: 'Latest heart rate',
+                label: l10n.homeLatestHeartRate,
                 value: data.heartRate == null
                     ? '—'
-                    : '${data.heartRate!.value.round()} bpm',
+                    : l10n.homeHeartRateValue(
+                        data.heartRate!.value.round().toString(),
+                      ),
               ),
             ),
           ],
@@ -180,24 +190,26 @@ class _BmiCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    final locale = Localizations.localeOf(context).toLanguageTag();
     final w = weight;
     final bmi = computeBmi(weightKg: w?.value, heightCm: profile.heightCm);
 
     if (w == null) {
-      return const _InfoCard(
+      return _InfoCard(
         icon: Icons.monitor_weight_outlined,
-        title: 'Body weight',
-        body: 'No weight recorded yet. Refresh after your health app has it.',
+        title: l10n.bmiBodyWeightTitle,
+        body: l10n.bmiNoWeight,
       );
     }
-    final weightLine = '${w.value.toStringAsFixed(1)} kg';
+    final weightLine = '${formatDecimal(w.value, locale: locale)} kg';
     if (bmi == null) {
       // Non-prominent prompt: only when weight exists but height is missing.
       return Card(
         child: ListTile(
           leading: const Icon(Icons.straighten),
-          title: Text('Add your height to see BMI ($weightLine)'),
-          subtitle: const Text('Tap to set it in Settings'),
+          title: Text(l10n.bmiAddHeightTitle(weightLine)),
+          subtitle: Text(l10n.bmiAddHeightSubtitle),
           onTap: onAddProfile,
         ),
       );
@@ -212,9 +224,9 @@ class _BmiCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('BMI', style: theme.textTheme.labelMedium),
+                Text(l10n.bmiLabel, style: theme.textTheme.labelMedium),
                 Text(
-                  bmi.value.toStringAsFixed(1),
+                  formatDecimal(bmi.value, locale: locale),
                   style: theme.textTheme.headlineMedium,
                 ),
               ],
@@ -229,7 +241,7 @@ class _BmiCard extends StatelessWidget {
                       Icon(Icons.circle, size: 12, color: color),
                       const SizedBox(width: 6),
                       Text(
-                        bmi.category.label,
+                        bmiCategoryLabel(l10n, bmi.category),
                         style: theme.textTheme.titleMedium,
                       ),
                     ],
@@ -237,8 +249,8 @@ class _BmiCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     age == null
-                        ? 'Weight $weightLine'
-                        : 'Weight $weightLine · age $age',
+                        ? l10n.bmiWeightOnly(weightLine)
+                        : l10n.bmiWeightAndAge(weightLine, age),
                     style: theme.textTheme.bodySmall,
                   ),
                 ],
@@ -259,22 +271,25 @@ class _SleepCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final n = night;
     if (n == null) {
-      return const _InfoCard(
+      return _InfoCard(
         icon: Icons.bedtime_outlined,
-        title: 'Sleep',
-        body: 'No sleep tracked recently.',
+        title: l10n.homeSleepTitle,
+        body: l10n.homeSleepNone,
       );
     }
     return Card(
       child: ListTile(
         leading: const Icon(Icons.bedtime),
-        title: Text('Last night · ${formatHoursMinutes(n.totalSleep)} asleep'),
+        title: Text(
+          l10n.homeSleepLastNight(formatHoursMinutes(n.totalSleep, l10n)),
+        ),
         subtitle: Text(
           n.hasStageBreakdown
-              ? '${n.awakenings} awakenings · tap for stages'
-              : 'tap for details',
+              ? l10n.homeSleepStages(n.awakenings)
+              : l10n.homeSleepDetails,
         ),
         trailing: const Icon(Icons.chevron_right),
         onTap: onOpen,

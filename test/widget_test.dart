@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:cairn/src/app.dart';
+import 'package:cairn/src/settings/locale_controller.dart';
+import 'package:cairn/src/settings/locale_store.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -22,7 +24,11 @@ void main() {
     // CairnServices.create() + the pages' file reads use real async that the
     // widget tester's fake-async can't drive; complete them on the real loop.
     await tester.runAsync(() async {
-      await tester.pumpWidget(const CairnApp());
+      final localeController = LocaleController(
+        await LocaleStore.appSupport(),
+        initial: null,
+      );
+      await tester.pumpWidget(CairnApp(localeController: localeController));
       await Future<void>.delayed(const Duration(milliseconds: 300));
     });
     // A few bounded frames to rebuild the resolved shell (no pumpAndSettle:

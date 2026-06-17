@@ -15,6 +15,32 @@ import 'package:cairn/src/sync/webdav_nextcloud_sync_target.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+/// The outcome of a [CairnServices.refresh], for the UI to localise.
+enum RefreshStatus {
+  /// Data was read and (if connected) synced successfully.
+  ok,
+
+  /// Reading from the OS health store failed; nothing was saved.
+  readFailed,
+
+  /// Data was saved locally but the upload to Nextcloud failed.
+  syncFailed,
+}
+
+/// The result of a refresh: a [status] plus an optional raw [detail] (a
+/// technical cause, not localised) to append to the user-facing message.
+@immutable
+class RefreshResult {
+  /// Creates a refresh result.
+  const RefreshResult(this.status, [this.detail]);
+
+  /// The high-level outcome.
+  final RefreshStatus status;
+
+  /// The raw error cause, when [status] is a failure.
+  final String? detail;
+}
+
 /// The app's shared, app-lifetime services, built once and owned by the shell.
 ///
 /// Holds the single [http.Client] used by auth + WebDAV (closed in [dispose]),
@@ -84,21 +110,21 @@ final class CairnServices {
   /// readings land in the cache (the read-path analogue of [profile]).
   final ValueNotifier<int> dataRevision = ValueNotifier(0);
 
-  Future<String?>? _refreshInFlight;
+  Future<RefreshResult>? _refreshInFlight;
 
   /// Reads new data from the OS health store into the cache, bumps
   /// [dataRevision] so screens reload, then pushes to Nextcloud if connected.
-  /// Returns a user-facing error message, or `null` on success.
+  /// Returns a typed [RefreshResult] the UI localises.
   ///
   /// Concurrent calls (e.g. the Home button and a Sleep pull-to-refresh) are
   /// coalesced into a single run, so ingest/sync never overlap.
-  Future<String?> refresh() {
+  Future<RefreshResult> refresh() {
     return _refreshInFlight ??= _runRefresh().whenComplete(() {
       _refreshInFlight = null;
     });
   }
 
-  Future<String?> _runRefresh() async {
+  Future<RefreshResult> _runRefresh() async {
     try {
       final granted = await repository.requestAuthorization(
         HealthMetric.values.toSet(),
@@ -108,18 +134,24 @@ final class CairnServices {
         store: store,
       ).ingest(granted);
     } on Exception catch (error) {
-      return 'Could not read health data: $error';
+      // Don't surface a raw exception string to the UI — it could, in
+      // principle, carry sensitive data. Log it for diagnosis instead.
+      debugPrint('Health read failed: $error');
+      return const RefreshResult(RefreshStatus.readFailed);
     }
     // New local data is on disk → refresh the screens even if the upload fails.
     dataRevision.value++;
     try {
       if (await coordinator.isConnected()) await coordinator.syncNow();
     } on NextcloudSyncException catch (error) {
-      return 'Saved locally; sync failed: ${error.message}';
+      // NextcloudSyncException.message is a controlled, non-sensitive string.
+      return RefreshResult(RefreshStatus.syncFailed, error.message);
     } on Exception catch (error) {
-      return 'Saved locally; sync failed: $error';
+      // Unexpected/untyped error → generic message; never echo the raw cause.
+      debugPrint('Sync failed: $error');
+      return const RefreshResult(RefreshStatus.syncFailed);
     }
-    return null;
+    return const RefreshResult(RefreshStatus.ok);
   }
 
   /// Releases the shared HTTP client and the notifiers.

@@ -1,3 +1,4 @@
+import 'package:cairn/l10n/app_localizations.dart';
 import 'package:cairn/src/query/night_sleep.dart';
 import 'package:cairn/src/sleep/sleep_visuals.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -15,6 +16,7 @@ class HypnogramChart extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
     final spots = <FlSpot>[];
     for (final segment in night.stages) {
       final x0 = segment.start.difference(night.start).inMinutes.toDouble();
@@ -29,10 +31,7 @@ class HypnogramChart extends StatelessWidget {
     // gracefully for empty or all-zero-duration nights.
     final maxX = spots.isEmpty ? 0.0 : spots.last.x;
     if (spots.length < 2 || maxX <= 0) {
-      return _Placeholder(
-        text: 'No per-stage detail for this night.',
-        theme: theme,
-      );
+      return _Placeholder(text: l10n.sleepNoStageDetail, theme: theme);
     }
 
     return SizedBox(
@@ -55,7 +54,7 @@ class HypnogramChart extends StatelessWidget {
                 reservedSize: 52,
                 interval: 1,
                 getTitlesWidget: (value, meta) {
-                  final label = kHypnogramAxis[value.round()];
+                  final label = hypnogramAxisLabel(l10n, value.round());
                   if (label == null) return const SizedBox.shrink();
                   return Padding(
                     padding: const EdgeInsets.only(right: 6),

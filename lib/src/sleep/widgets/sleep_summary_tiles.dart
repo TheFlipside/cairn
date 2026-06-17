@@ -1,3 +1,4 @@
+import 'package:cairn/l10n/app_localizations.dart';
 import 'package:cairn/src/format/duration_format.dart';
 import 'package:cairn/src/query/night_sleep.dart';
 import 'package:flutter/material.dart';
@@ -13,16 +14,17 @@ class SleepSummaryTiles extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
     final efficiency = night.efficiency;
     return Row(
       children: [
         _Tile(
-          label: 'Time asleep',
-          value: formatHoursMinutes(night.totalSleep),
+          label: l10n.sleepTileAsleep,
+          value: formatHoursMinutes(night.totalSleep, l10n),
         ),
-        _Tile(label: 'Awakenings', value: '${night.awakenings}'),
+        _Tile(label: l10n.sleepTileAwakenings, value: '${night.awakenings}'),
         _Tile(
-          label: 'Efficiency',
+          label: l10n.sleepTileEfficiency,
           value: efficiency == null ? '—' : '${(efficiency * 100).round()}%',
         ),
       ],

@@ -1,3 +1,4 @@
+import 'package:cairn/l10n/app_localizations.dart';
 import 'package:cairn/src/onboarding/setup_guide.dart';
 import 'package:flutter/material.dart';
 
@@ -11,14 +12,15 @@ class SetupGuidePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final guide = setupGuideFor(theme.platform);
+    final l10n = AppLocalizations.of(context);
+    final guide = setupGuideFor(theme.platform, l10n);
     return Scaffold(
-      appBar: AppBar(title: const Text('Getting your data in')),
+      appBar: AppBar(title: Text(l10n.settingsHelpGuideTitle)),
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           Text(
-            'Set up on ${guide.platformLabel}',
+            l10n.guideTitle(guide.platformLabel),
             style: theme.textTheme.titleLarge,
           ),
           const SizedBox(height: 8),

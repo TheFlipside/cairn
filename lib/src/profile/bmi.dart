@@ -16,14 +16,6 @@ enum BmiCategory {
 
   /// Whether this category is within the normal range.
   bool get isNormal => this == BmiCategory.normal;
-
-  /// A short human-readable label.
-  String get label => switch (this) {
-    BmiCategory.underweight => 'Underweight',
-    BmiCategory.normal => 'Normal',
-    BmiCategory.overweight => 'Overweight',
-    BmiCategory.obese => 'Obese',
-  };
 }
 
 /// A computed Body Mass Index and its category.

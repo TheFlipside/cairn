@@ -1,0 +1,11 @@
+# Flutter gen-l10n configuration (DESIGN.md §13 — i18n).
+# ARB sources live in lib/l10n/; the generated AppLocalizations is emitted
+# beside them (synthetic-package is deprecated) and gitignored — it is
+# regenerated on `flutter pub get`.
+arb-dir: lib/l10n
+template-arb-file: app_en.arb
+output-localization-file: app_localizations.dart
+output-class: AppLocalizations
+# Non-nullable AppLocalizations.of(context) — every screen builds under
+# MaterialApp's Localizations, so the lookup never returns null.
+nullable-getter: false

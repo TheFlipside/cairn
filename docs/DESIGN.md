@@ -254,6 +254,7 @@ The user's **long-tail history lives only in their Nextcloud.** Recent data stil
 - Immutable models; clear separation of concerns (suggested: Riverpod or BLoC for state, isolates for heavy JSON parsing).
 - Clean, independently-testable interfaces around every native capability (health access, secure storage, WebDAV) so they can be mocked and verified in isolation.
 - Validate emitted OMH against the schema library in tests — the format is the product's durability guarantee.
+- **Internationalization.** All user-facing text goes through Flutter `gen-l10n` ARB files (`lib/l10n/`, English template + German); no hardcoded display strings (unit symbols and ISO dates excepted). The app follows the device locale with an in-app override persisted device-locally (never synced). Numbers/durations are `intl`-formatted per locale; an ARB-parity test guards against missing translations.
 
 ---
 
@@ -340,6 +341,9 @@ because the on-disk format is the one genuinely expensive thing to change
   source-deduplicated; a shared revision signal reloads every screen on new data.
 - **Slice 2 ✅ (partial):** OS-specific data-source **setup guide** (Android +
   iOS, §8), reachable from Settings and the Sleep empty state.
+- **Slice 3 ✅:** **internationalization** (English + German via `gen-l10n`),
+  device-locale default with an in-app language picker; locale-aware number and
+  duration formatting (§13).
 - **Remaining:** per-category screens (HR / steps / weight / activity charts)
   and the backup nudge (§10.2).
 

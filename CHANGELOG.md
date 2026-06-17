@@ -6,6 +6,20 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- **Internationalization (English + German).** All user-facing text is now
+  localized through Flutter's `gen-l10n` ARB workflow (`lib/l10n/app_en.arb`
+  template + `app_de.arb`), wired via `flutter_localizations`. The app follows
+  the device locale by default; a **language picker** in Settings
+  (System / English / Deutsch) overrides it, persisted device-locally in
+  `<app-support>/cairn/preferences.json` (a `LocaleStore`/`LocaleController`,
+  never synced to Nextcloud). Numbers are locale-formatted via `intl`
+  (`72,5 kg` and grouped step counts under `de`); durations use localized unit
+  words (`7 Std. 20 Min.`); the German translation uses the informal "du".
+  Unit symbols (`kg`, `cm`, `bpm`, `%`, `h`) and ISO dates/24-hour times are
+  kept locale-neutral by design. `CairnServices.refresh()` now returns a typed
+  `RefreshResult` the UI localizes, so no English strings live in the service
+  layer.
+
 - Flutter project scaffold (Android + iOS) with a clean-architecture `lib/src`
   layout and mockable boundary interfaces for health access, OMH mapping,
   local storage, and Nextcloud sync.
