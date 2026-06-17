@@ -44,6 +44,9 @@ dependencies:
   xml: ^6.5.0
 
 dev_dependencies:
+  # Generates the Android/iOS launcher icons from assets/icon/ (see
+  # flutter_launcher_icons.yaml); build-time only (MIT).
+  flutter_launcher_icons: ^0.14.4
   flutter_test:
     sdk: flutter
   # Validates emitted OMH datapoints against the vendored JSON Schemas in

@@ -1,0 +1,13 @@
+# Launcher-icon generation (run: dart run flutter_launcher_icons).
+# Source art is rendered by tool/generate_icon.py into assets/icon/.
+flutter_launcher_icons:
+  android: true
+  ios: true
+  # Full-bleed master for iOS and the Android legacy/round icons.
+  image_path: "assets/icon/icon.png"
+  # iOS icons must be opaque (no alpha channel).
+  remove_alpha_ios: true
+  # Android 8+ adaptive icon: the teal gradient background (matching the
+  # master) + the stones as the foreground.
+  adaptive_icon_background: "assets/icon/icon_background.png"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"

@@ -6,6 +6,13 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- **App icon + identity.** A "cairn" launcher icon — warm stones balanced into
+  a stack on a teal gradient — for Android (adaptive: gradient background +
+  stones foreground, plus a legacy/round fallback) and iOS. The art is rendered
+  by `tool/generate_icon.py` (Pillow) into `assets/icon/` and turned into
+  platform assets by `flutter_launcher_icons`. The app now displays as **Cairn**
+  (capital C) on both platforms (Android `android:label`, iOS `CFBundleName`).
+
 - **Per-category detail screens (Phase 4 slice 4).** Tapping a Home card opens a
   focused screen for that metric: **weight** (90-day trend line + latest + net
   change), **steps** (14-day bar chart + today + active-day average), **heart
