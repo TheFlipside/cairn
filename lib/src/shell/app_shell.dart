@@ -72,7 +72,17 @@ class _AppShellState extends State<AppShell> {
         onOpenSleep: () => _select(1),
         onOpenSettings: () => _select(2),
       ),
-      SleepPage(query: services.query),
+      SleepPage(
+        query: services.query,
+        revision: services.dataRevision,
+        onRefresh: () async {
+          final messenger = ScaffoldMessenger.of(context);
+          final error = await services.refresh();
+          if (error != null) {
+            messenger.showSnackBar(SnackBar(content: Text(error)));
+          }
+        },
+      ),
       SettingsPage(services: services),
     ];
     return Scaffold(

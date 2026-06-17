@@ -13,7 +13,7 @@ import 'package:flutter_test/flutter_test.dart';
 class _FakeQuery implements HealthQueryService {
   _FakeQuery(this.nights);
 
-  final List<NightSleep> nights;
+  List<NightSleep> nights;
 
   @override
   Future<List<NightSleep>> lastNNights(int n) async => nights.take(n).toList();
@@ -66,8 +66,13 @@ NightSleep _sampleNight() {
 }
 
 void main() {
-  Widget app(List<NightSleep> nights) =>
-      MaterialApp(home: SleepPage(query: _FakeQuery(nights)));
+  Widget app(List<NightSleep> nights) => MaterialApp(
+    home: SleepPage(
+      query: _FakeQuery(nights),
+      revision: ValueNotifier<int>(0),
+      onRefresh: () async {},
+    ),
+  );
 
   testWidgets('shows the empty state when there is no sleep data', (
     tester,
@@ -89,5 +94,29 @@ void main() {
     // The trend is the last item in the ListView; scroll it into view.
     await tester.scrollUntilVisible(find.byType(BarChart), 200);
     expect(find.byType(BarChart), findsOneWidget); // trend
+  });
+
+  testWidgets('reloads when the data revision changes', (tester) async {
+    final query = _FakeQuery([]);
+    final revision = ValueNotifier<int>(0);
+    await tester.pumpWidget(
+      MaterialApp(
+        home: SleepPage(
+          query: query,
+          revision: revision,
+          onRefresh: () async {},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('No sleep data yet'), findsOneWidget);
+
+    // New data is ingested elsewhere → bump the shared revision.
+    query.nights = [_sampleNight()];
+    revision.value++;
+    await tester.pumpAndSettle();
+
+    expect(find.text('No sleep data yet'), findsNothing);
+    expect(find.text('Last night'), findsOneWidget);
   });
 }

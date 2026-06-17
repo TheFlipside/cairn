@@ -77,6 +77,11 @@ All notable changes to this project are documented in this file.
 - BMI updates immediately after editing height/date of birth: the profile is an
   app-wide `ValueNotifier`, so the Home BMI card recomputes without a manual
   refresh.
+- Every data screen now updates immediately when new data is ingested: a shared
+  `dataRevision` signal (bumped by a centralized `CairnServices.refresh()`)
+  reloads Home and the Sleep deep-dive together, so a refresh from any screen
+  reflects everywhere — no per-screen manual reload. Concurrent refreshes are
+  coalesced into one.
 - Workouts now read (Android): authorisation also requests the distance and
   calorie permissions the plugin reads alongside an exercise session, which
   previously failed with a `SecurityException` and returned no activities.

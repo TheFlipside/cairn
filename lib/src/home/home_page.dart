@@ -5,8 +5,6 @@ import 'package:cairn/src/profile/profile.dart';
 import 'package:cairn/src/query/display_readings.dart';
 import 'package:cairn/src/query/night_sleep.dart';
 import 'package:cairn/src/shell/cairn_services.dart';
-import 'package:cairn/src/storage/health_ingest_service.dart';
-import 'package:cairn/src/sync/nextcloud_sync_target.dart';
 import 'package:flutter/material.dart';
 
 /// The overview home screen: at-a-glance latest values read from the local OMH
@@ -37,6 +35,27 @@ class _HomePageState extends State<HomePage> {
   late Future<_Overview> _data = _load();
   bool _busy = false;
 
+  @override
+  void initState() {
+    super.initState();
+    widget.services.dataRevision.addListener(_reload);
+  }
+
+  @override
+  void dispose() {
+    widget.services.dataRevision.removeListener(_reload);
+    super.dispose();
+  }
+
+  /// Reloads the overview when new data lands in the cache (e.g. after a
+  /// refresh triggered from any screen).
+  void _reload() {
+    if (!mounted) return;
+    setState(() {
+      _data = _load();
+    });
+  }
+
   Future<_Overview> _load() async {
     final query = widget.services.query;
     return _Overview(
@@ -49,29 +68,9 @@ class _HomePageState extends State<HomePage> {
 
   Future<void> _refresh() async {
     setState(() => _busy = true);
-    String? error;
-    try {
-      final repo = widget.services.repository;
-      final granted = await repo.requestAuthorization(
-        HealthMetric.values.toSet(),
-      );
-      await HealthIngestService(
-        repository: repo,
-        store: widget.services.store,
-      ).ingest(granted);
-      if (await widget.services.coordinator.isConnected()) {
-        await widget.services.coordinator.syncNow();
-      }
-    } on NextcloudSyncException catch (e) {
-      error = 'Synced data is local only: ${e.message}';
-    } on Exception catch (e) {
-      error = 'Refresh failed: $e';
-    }
+    final error = await widget.services.refresh(); // bump reloads via _reload
     if (!mounted) return;
-    setState(() {
-      _busy = false;
-      _data = _load();
-    });
+    setState(() => _busy = false);
     if (error != null) {
       ScaffoldMessenger.of(
         context,

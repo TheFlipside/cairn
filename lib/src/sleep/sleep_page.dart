@@ -12,11 +12,23 @@ const int _trendNights = 7;
 /// The sleep deep-dive: last night's hypnogram + stage breakdown + headline
 /// numbers, and a multi-night trend (DESIGN.md §9, read path A).
 class SleepPage extends StatefulWidget {
-  /// Creates the sleep page reading from [query].
-  const SleepPage({required this.query, super.key});
+  /// Creates the sleep page reading from [query]. [revision] fires when new
+  /// data lands in the cache (reload trigger); [onRefresh] ingests + syncs.
+  const SleepPage({
+    required this.query,
+    required this.revision,
+    required this.onRefresh,
+    super.key,
+  });
 
   /// The query service over the local OMH cache.
   final HealthQueryService query;
+
+  /// Bumped when new data is ingested, so the page reloads from the cache.
+  final Listenable revision;
+
+  /// Pulls new data from the health store and syncs (pull-to-refresh).
+  final Future<void> Function() onRefresh;
 
   @override
   State<SleepPage> createState() => _SleepPageState();
@@ -29,12 +41,25 @@ class _SleepPageState extends State<SleepPage> {
   void initState() {
     super.initState();
     _nights = widget.query.lastNNights(_trendNights);
+    widget.revision.addListener(_reload);
+  }
+
+  @override
+  void dispose() {
+    widget.revision.removeListener(_reload);
+    super.dispose();
+  }
+
+  void _reload() {
+    if (!mounted) return;
+    setState(() {
+      _nights = widget.query.lastNNights(_trendNights);
+    });
   }
 
   Future<void> _refresh() async {
-    final nights = widget.query.lastNNights(_trendNights);
-    setState(() => _nights = nights);
-    await nights;
+    // Ingest + sync; the revision bump reloads the nights via _reload.
+    await widget.onRefresh();
   }
 
   @override

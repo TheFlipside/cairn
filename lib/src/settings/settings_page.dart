@@ -169,6 +169,7 @@ class _SettingsPageState extends State<SettingsPage> {
       for (final r in results) {
         lines.add('${r.metric.name}: +${r.dataPointCount}');
       }
+      widget.services.dataRevision.value++; // reload screens like a refresh
     } on Exception catch (e) {
       lines.add('error: $e');
     }
