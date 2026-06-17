@@ -36,8 +36,8 @@ Builds:
       - windows
     prebuild:
       # Pin Flutter to the exact version CI builds with — single source of truth
-      # is the literal `flutter-version:` in .forgejo/workflows/release.yml.
-      - flutterVersion=$(sed -n -E "s/.*flutter-version:\s*'?([0-9.]+)'?.*/\1/p" .forgejo/workflows/release.yml | head -1)
+      # is the literal `FLUTTER_VERSION:` in .forgejo/workflows/release.yml.
+      - flutterVersion=$(sed -n -E "s/.*FLUTTER_VERSION:\s*'?([0-9.]+)'?.*/\1/p" .forgejo/workflows/release.yml | head -1)
       - '[ -n "$flutterVersion" ]'
       - git -C $$flutter$$ checkout -f $flutterVersion
       - export PUB_CACHE=$(pwd)/.pub-cache

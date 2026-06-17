@@ -39,6 +39,9 @@ on:
 env:
   # GitHub owner/repo that receives the public release.
   GH_REPO: TheFlipside/cairn
+  # Flutter SDK version — the single source of truth; the F-Droid recipe greps
+  # this literal out of the file. Keep it a plain quoted number.
+  FLUTTER_VERSION: '3.44.0'
 
 jobs:
   release:
@@ -54,12 +57,22 @@ jobs:
           java-version: '17'
 
       - name: Set up Flutter
-        uses: https://github.com/subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
-        with:
-          channel: stable
-          # Single source of truth for the Flutter version; the F-Droid recipe
-          # greps this literal out of the file. Keep it a plain quoted number.
-          flutter-version: '3.44.0'
+        # Install Flutter from github.com directly rather than via
+        # subosito/flutter-action: that is a COMPOSITE action that internally
+        # `uses: actions/cache`, and a bare `actions/*` ref resolves against this
+        # self-hosted Forgejo instance (no such repo) and fails. A plain clone
+        # avoids all nested-action resolution. Cached per version on the
+        # bare-metal host; the version comes from FLUTTER_VERSION (env above),
+        # which is also the single source the F-Droid recipe greps.
+        run: |
+          set -euo pipefail
+          flutter_home="$HOME/flutter-$FLUTTER_VERSION"
+          if [ ! -x "$flutter_home/bin/flutter" ]; then
+            git clone --depth 1 -b "$FLUTTER_VERSION" \
+              https://github.com/flutter/flutter.git "$flutter_home"
+          fi
+          git config --global --add safe.directory "$flutter_home"
+          echo "$flutter_home/bin" >> "$GITHUB_PATH"
 
       - name: Dependencies
         run: flutter pub get --enforce-lockfile
