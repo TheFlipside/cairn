@@ -42,6 +42,11 @@ class _AppShellState extends State<AppShell> {
         return;
       }
       setState(() => _services = services);
+      // Opportunistic foreground sync on open (DESIGN §4.4): screens already
+      // show cached data; this reads new readings and uploads them, reloading
+      // the screens when it lands. Silent — the manual Refresh/Sync now surface
+      // errors; this is coalesced with any user-triggered refresh.
+      unawaited(services.refresh());
     } on Object catch (error) {
       if (mounted) setState(() => _error = '$error');
     }

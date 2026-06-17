@@ -2,19 +2,15 @@ import 'dart:async';
 
 import 'package:cairn/l10n/app_localizations.dart';
 import 'package:cairn/src/dashboard/connect_nextcloud_page.dart';
-import 'package:cairn/src/health/health_metric.dart';
 import 'package:cairn/src/onboarding/setup_guide_page.dart';
 import 'package:cairn/src/profile/profile.dart';
 import 'package:cairn/src/settings/locale_controller.dart';
 import 'package:cairn/src/shell/cairn_services.dart';
-import 'package:cairn/src/storage/health_ingest_service.dart';
-import 'package:cairn/src/sync/nextcloud_sync_target.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
-/// Product settings: Nextcloud connection + manual sync, the profile editor
-/// (height + date of birth for BMI), the app-language picker, and a debug-only
-/// developer section.
+/// Product settings: Nextcloud connection + a manual "Sync now" (read the
+/// health store, then upload), the profile editor (height + date of birth for
+/// BMI), and the app-language picker.
 class SettingsPage extends StatefulWidget {
   /// Creates the settings page.
   const SettingsPage({
@@ -38,7 +34,6 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _connLoaded = false;
   String? _account; // login@host when connected, null otherwise
   String _syncStatus = '';
-  String _debugStatus = '';
   Profile _profile = Profile.empty();
   bool _syncing = false;
 
@@ -87,38 +82,44 @@ class _SettingsPageState extends State<SettingsPage> {
     await _load();
   }
 
+  /// Reads the health store and uploads to Nextcloud (the full cycle, shared
+  /// with the Home/Sleep refresh and the background task), then reports what
+  /// happened.
   Future<void> _syncNow() async {
     final l10n = AppLocalizations.of(context);
     setState(() {
       _syncing = true;
       _syncStatus = l10n.settingsSyncing;
     });
-    String status;
-    try {
-      if (!await widget.services.coordinator.isConnected()) {
-        status = l10n.settingsConnectFirst;
-      } else {
-        final report = await widget.services.coordinator.syncNow();
-        final conflicts = report.hasConflicts
-            ? ' · ${l10n.settingsSyncConflicts(report.conflicts.length)}'
-            : '';
-        status =
-            '${l10n.settingsSyncResult(report.pushed.length, report.skipped)}'
-            '$conflicts';
-      }
-    } on NextcloudSyncException catch (e) {
-      // NextcloudSyncException.message is a controlled, non-sensitive string.
-      status = l10n.settingsSyncFailed(e.message);
-    } on Exception catch (e) {
-      // Unexpected/untyped error → generic message; never echo the raw cause.
-      debugPrint('Sync failed: $e');
-      status = l10n.settingsSyncFailedGeneric;
-    }
+    final result = await widget.services.refresh();
     if (!mounted) return;
     setState(() {
       _syncing = false;
-      _syncStatus = status;
+      _syncStatus = _statusFor(result, l10n);
     });
+  }
+
+  String _statusFor(RefreshResult result, AppLocalizations l10n) {
+    switch (result.status) {
+      case RefreshStatus.readFailed:
+        return l10n.refreshReadFailed;
+      case RefreshStatus.syncFailed:
+        final detail = result.detail;
+        return detail == null
+            ? l10n.settingsSyncFailedGeneric
+            : l10n.settingsSyncFailed(detail);
+      case RefreshStatus.ok:
+        final report = result.report;
+        // report == null → not connected (read locally, nothing uploaded).
+        if (report == null) return l10n.settingsSyncedLocalOnly;
+        final summary = l10n.settingsSyncResult(
+          report.pushed.length,
+          report.skipped,
+        );
+        if (!report.hasConflicts) return summary;
+        final conflicts = l10n.settingsSyncConflicts(report.conflicts.length);
+        return '$summary · $conflicts';
+    }
   }
 
   Future<void> _saveHeight() async {
@@ -178,29 +179,6 @@ class _SettingsPageState extends State<SettingsPage> {
     unawaited(
       widget.localeController.setLocale(code == null ? null : Locale(code)),
     );
-  }
-
-  Future<void> _ingestDebug() async {
-    setState(() => _debugStatus = 'Reading…');
-    final lines = <String>[];
-    try {
-      final repo = widget.services.repository;
-      final granted = await repo.requestAuthorization(
-        HealthMetric.values.toSet(),
-      );
-      final results = await HealthIngestService(
-        repository: repo,
-        store: widget.services.store,
-      ).ingest(granted);
-      for (final r in results) {
-        lines.add('${r.metric.name}: +${r.dataPointCount}');
-      }
-      widget.services.dataRevision.value++; // reload screens like a refresh
-    } on Exception catch (e) {
-      lines.add('error: $e');
-    }
-    if (!mounted) return;
-    setState(() => _debugStatus = lines.join('\n'));
   }
 
   @override
@@ -341,20 +319,6 @@ class _SettingsPageState extends State<SettingsPage> {
               ),
             ),
           ),
-          if (kDebugMode) ...[
-            const SizedBox(height: 24),
-            Text(l10n.settingsDeveloper, style: theme.textTheme.titleMedium),
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: _ingestDebug,
-              child: Text(l10n.settingsDevIngest),
-            ),
-            if (_debugStatus.isNotEmpty)
-              Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: Text(_debugStatus, style: theme.textTheme.bodySmall),
-              ),
-          ],
         ],
       ),
     );

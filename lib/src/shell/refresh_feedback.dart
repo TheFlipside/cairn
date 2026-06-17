@@ -8,6 +8,8 @@ extension RefreshResultMessage on RefreshResult {
   /// success. A `null` [detail] yields a generic message — only a controlled,
   /// typed error message is ever interpolated into the user-facing text.
   String? localizedMessage(AppLocalizations l10n) => switch (status) {
+    // Success is silent on this (snackbar) path — Home/Sleep/on-open show no
+    // message even when a push ran; the report is surfaced only in Settings.
     RefreshStatus.ok => null,
     RefreshStatus.readFailed => l10n.refreshReadFailed,
     RefreshStatus.syncFailed =>

@@ -163,5 +163,15 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 
+- **Sync now** (Settings) now runs the full cycle — read the OS health store
+  *and* upload to Nextcloud — instead of upload-only, and reports what happened
+  (pushed/up-to-date counts, conflicts, or "synced locally" when no Nextcloud
+  is connected). The app also runs an opportunistic **foreground sync on open**
+  (Phase 5, §4.4): screens show cached data instantly, then refresh when new
+  readings land. Both reuse the one coalesced refresh path.
+
 ### Removed
+
+- The `kDebugMode`-only "Ingest from health store" developer button — its
+  manual-read function is now the proper Settings "Sync now".
 

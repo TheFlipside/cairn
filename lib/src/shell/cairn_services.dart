@@ -9,6 +9,7 @@ import 'package:cairn/src/storage/jsonl_omh_file_store.dart';
 import 'package:cairn/src/sync/flutter_secure_token_store.dart';
 import 'package:cairn/src/sync/http_nextcloud_auth.dart';
 import 'package:cairn/src/sync/nextcloud_sync_coordinator.dart';
+import 'package:cairn/src/sync/nextcloud_sync_service.dart';
 import 'package:cairn/src/sync/nextcloud_sync_target.dart';
 import 'package:cairn/src/sync/sync_journal.dart';
 import 'package:cairn/src/sync/webdav_nextcloud_sync_target.dart';
@@ -27,18 +28,22 @@ enum RefreshStatus {
   syncFailed,
 }
 
-/// The result of a refresh: a [status] plus an optional raw [detail] (a
-/// technical cause, not localised) to append to the user-facing message.
+/// The result of a refresh: a [status], an optional raw [detail] (a technical
+/// cause, not localised), and the [report] of the push when one ran.
 @immutable
 class RefreshResult {
   /// Creates a refresh result.
-  const RefreshResult(this.status, [this.detail]);
+  const RefreshResult(this.status, {this.detail, this.report});
 
   /// The high-level outcome.
   final RefreshStatus status;
 
   /// The raw error cause, when [status] is a failure.
   final String? detail;
+
+  /// The push report when [status] is [RefreshStatus.ok] and a sync ran;
+  /// `null` when not connected to Nextcloud (read happened, nothing uploaded).
+  final SyncReport? report;
 }
 
 /// The app's shared, app-lifetime services, built once and owned by the shell.
@@ -141,17 +146,19 @@ final class CairnServices {
     }
     // New local data is on disk → refresh the screens even if the upload fails.
     dataRevision.value++;
+    SyncReport? report;
     try {
-      if (await coordinator.isConnected()) await coordinator.syncNow();
+      if (await coordinator.isConnected()) report = await coordinator.syncNow();
     } on NextcloudSyncException catch (error) {
       // NextcloudSyncException.message is a controlled, non-sensitive string.
-      return RefreshResult(RefreshStatus.syncFailed, error.message);
+      return RefreshResult(RefreshStatus.syncFailed, detail: error.message);
     } on Exception catch (error) {
       // Unexpected/untyped error → generic message; never echo the raw cause.
       debugPrint('Sync failed: $error');
       return const RefreshResult(RefreshStatus.syncFailed);
     }
-    return const RefreshResult(RefreshStatus.ok);
+    // report == null → not connected (read succeeded, nothing uploaded).
+    return RefreshResult(RefreshStatus.ok, report: report);
   }
 
   /// Releases the shared HTTP client and the notifiers.
