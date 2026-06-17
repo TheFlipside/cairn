@@ -68,6 +68,36 @@
   "durationHoursMinutes": "{hours} Std. {minutes} Min.",
   "durationMinutes": "{minutes} Min.",
 
+  "backupNudge": "Deine Verlaufsdaten liegen in deiner Nextcloud — sorge dafür, dass sie gesichert sind.",
+
+  "metricLastDays": "Letzte {days} Tage",
+  "metricLoadError": "Diese Daten konnten nicht geladen werden.",
+
+  "weightTitle": "Gewicht",
+  "weightEmpty": "Noch keine Gewichtsdaten.",
+  "weightLatest": "Aktuell",
+  "weightChange": "Veränderung",
+
+  "stepsTitle": "Schritte",
+  "stepsEmpty": "Noch keine Schrittdaten.",
+  "stepsToday": "Heute",
+  "stepsDailyAverage": "Tagesdurchschnitt",
+
+  "heartRateTitle": "Puls",
+  "heartRateEmpty": "Noch keine Pulsdaten.",
+  "heartRateLatest": "Aktuell",
+  "heartRateAverage": "Durchschnitt",
+  "heartRateRange": "Bereich",
+  "heartRateRangeValue": "{min}–{max}",
+  "heartRateDailyAverage": "Tagesdurchschnitt",
+
+  "activityTitle": "Aktivität",
+  "activityEmpty": "Noch keine Workouts.",
+  "activityWorkoutCount": "{count, plural, =0{Keine Workouts} =1{1 Workout} other{{count} Workouts}}",
+  "homeActivityRecent": "{count, plural, =0{Keine kürzlichen Workouts} =1{1 kürzliches Workout} other{{count} kürzliche Workouts}}",
+  "workoutDistance": "{km} km",
+  "workoutEnergy": "{kcal} kcal",
+
   "settingsTitle": "Einstellungen",
   "settingsNextcloud": "Nextcloud",
   "settingsConnChecking": "Wird geprüft…",

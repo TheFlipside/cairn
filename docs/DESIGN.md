@@ -327,7 +327,7 @@ because the on-disk format is the one genuinely expensive thing to change
   pull-merge** (multi-device convergence) and per-device anchor keying are
   deferred to the change-token / multi-device work in **Phase 8**.
 
-### Phase 4 — In-app dashboard + onboarding 🚧
+### Phase 4 — In-app dashboard + onboarding ✅
 
 - **Goal:** a usable read path and a guided first run.
 - **Layers:** `query/` (read path A over the local OMH cache — §9),
@@ -344,8 +344,10 @@ because the on-disk format is the one genuinely expensive thing to change
 - **Slice 3 ✅:** **internationalization** (English + German via `gen-l10n`),
   device-locale default with an in-app language picker; locale-aware number and
   duration formatting (§13).
-- **Remaining:** per-category screens (HR / steps / weight / activity charts)
-  and the backup nudge (§10.2).
+- **Slice 4 ✅:** per-category detail screens (weight / steps / heart rate /
+  activity), reached by tap-through from Home, over new query-layer time-series
+  methods; plus the backup nudge (§10.2). First-run guidance is the setup guide
+  + the Settings connect flow (no separate wizard).
 
 ### Phase 5 — Background sync ⬜
 

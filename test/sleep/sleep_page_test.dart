@@ -3,6 +3,7 @@ import 'package:cairn/src/health/health_metric.dart';
 import 'package:cairn/src/health/health_source.dart';
 import 'package:cairn/src/query/display_readings.dart';
 import 'package:cairn/src/query/health_query_service.dart';
+import 'package:cairn/src/query/metric_series.dart';
 import 'package:cairn/src/query/night_sleep.dart';
 import 'package:cairn/src/sleep/sleep_page.dart';
 import 'package:fl_chart/fl_chart.dart';
@@ -27,6 +28,22 @@ class _FakeQuery implements HealthQueryService {
 
   @override
   Future<double?> todayStepTotal() async => null;
+
+  @override
+  Future<List<ScalarReading>> scalarSeries(
+    HealthMetric metric, {
+    int days = 90,
+  }) async => const [];
+
+  @override
+  Future<List<DailyValue>> dailySteps({int days = 14}) async => const [];
+
+  @override
+  Future<List<DailyStat>> dailyHeartRate({int days = 14}) async => const [];
+
+  @override
+  Future<List<WorkoutReading>> recentWorkouts({int days = 30}) async =>
+      const [];
 }
 
 NightSleep _sampleNight() {

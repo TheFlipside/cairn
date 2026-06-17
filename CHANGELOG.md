@@ -6,6 +6,16 @@ All notable changes to this project are documented in this file.
 
 ### Added
 
+- **Per-category detail screens (Phase 4 slice 4).** Tapping a Home card opens a
+  focused screen for that metric: **weight** (90-day trend line + latest + net
+  change), **steps** (14-day bar chart + today + active-day average), **heart
+  rate** (14-day daily-average line + latest / window average / range), and
+  **activity** (recent workouts, newest-first, with duration / distance /
+  energy). Backed by new query-layer time-series methods (`scalarSeries`,
+  `dailySteps`, `dailyHeartRate`, `recentWorkouts`) with their own tests. All
+  text is localized (English + German) and numbers are locale-formatted.
+- **Backup nudge (§10.2).** A gentle, dismissible Home reminder that the synced
+  Nextcloud files are the only long-term copy of the user's history.
 - **Internationalization (English + German).** All user-facing text is now
   localized through Flutter's `gen-l10n` ARB workflow (`lib/l10n/app_en.arb`
   template + `app_de.arb`), wired via `flutter_localizations`. The app follows

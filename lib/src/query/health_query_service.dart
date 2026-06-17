@@ -2,6 +2,7 @@ import 'package:cairn/src/health/health_metric.dart';
 import 'package:cairn/src/health/health_source.dart';
 import 'package:cairn/src/health/source_dedup.dart';
 import 'package:cairn/src/query/display_readings.dart';
+import 'package:cairn/src/query/metric_series.dart';
 import 'package:cairn/src/query/night_sleep.dart';
 import 'package:cairn/src/query/omh_reading_parser.dart';
 import 'package:cairn/src/storage/omh_file_store.dart';
@@ -21,6 +22,20 @@ abstract interface class HealthQueryService {
 
   /// The last [n] nights of sleep, most-recent first.
   Future<List<NightSleep>> lastNNights(int n);
+
+  /// Raw scalar readings for [metric] over the last [days], oldest-first.
+  Future<List<ScalarReading>> scalarSeries(HealthMetric metric, {int days});
+
+  /// Per-day total step counts over the last [days], oldest-first. Days with
+  /// no data are included with a zero value so charts show the gap.
+  Future<List<DailyValue>> dailySteps({int days});
+
+  /// Per-day min / mean / max heart rate over the last [days], oldest-first.
+  /// Days with no readings are omitted.
+  Future<List<DailyStat>> dailyHeartRate({int days});
+
+  /// Recent workouts over the last [days], most-recent-first.
+  Future<List<WorkoutReading>> recentWorkouts({int days});
 }
 
 /// [HealthQueryService] backed by an [OmhFileStore]. Pure over the injected
@@ -104,6 +119,83 @@ final class OmhHealthQueryService implements HealthQueryService {
     final nights = reconcileNights(stages, episodes)
       ..sort((a, b) => b.start.compareTo(a.start));
     return nights.take(n).toList();
+  }
+
+  @override
+  Future<List<ScalarReading>> scalarSeries(
+    HealthMetric metric, {
+    int days = 90,
+  }) async {
+    final to = _dateOnly(_now());
+    // `days - 1`: the window is inclusive of today, so N days spans
+    // [today-(N-1), today] (matches dailyHeartRate / dailySteps).
+    final from = to.subtract(Duration(days: days - 1));
+    final maps = await store.readRange(metric: metric, from: from, to: to);
+    return maps.map(parseScalar).whereType<ScalarReading>().toList()
+      ..sort((a, b) => a.at.compareTo(b.at));
+  }
+
+  @override
+  Future<List<DailyValue>> dailySteps({int days = 14}) async {
+    final to = _dateOnly(_now());
+    final series = <DailyValue>[];
+    // Read per day so deduplication is within-day (matching todayStepTotal),
+    // and include empty days as zero so the trend chart shows the gap.
+    for (var i = days - 1; i >= 0; i--) {
+      final day = to.subtract(Duration(days: i));
+      final readings = (await store.readRange(
+        metric: HealthMetric.steps,
+        from: day,
+        to: day,
+      )).map(parseInterval).whereType<IntervalReading>().toList();
+      final total = readings.isEmpty
+          ? 0.0
+          : _dedupIntervals(readings).fold<double>(0, (s, r) => s + r.value);
+      series.add(DailyValue(day: day, value: total));
+    }
+    return series;
+  }
+
+  @override
+  Future<List<DailyStat>> dailyHeartRate({int days = 14}) async {
+    final to = _dateOnly(_now());
+    final from = to.subtract(Duration(days: days - 1));
+    final maps = await store.readRange(
+      metric: HealthMetric.heartRate,
+      from: from,
+      to: to,
+    );
+    final byDay = <DateTime, List<double>>{};
+    for (final map in maps) {
+      final reading = parseScalar(map);
+      if (reading == null) continue;
+      (byDay[_dateOnly(reading.at)] ??= []).add(reading.value);
+    }
+    final stats = byDay.entries.map((entry) {
+      final values = entry.value;
+      return DailyStat(
+        day: entry.key,
+        min: values.reduce((a, b) => a < b ? a : b),
+        max: values.reduce((a, b) => a > b ? a : b),
+        mean: values.reduce((a, b) => a + b) / values.length,
+        count: values.length,
+      );
+    }).toList()..sort((a, b) => a.day.compareTo(b.day));
+    return stats;
+  }
+
+  @override
+  Future<List<WorkoutReading>> recentWorkouts({int days = 30}) async {
+    final to = _dateOnly(_now());
+    // `days - 1`: inclusive of today (see scalarSeries).
+    final from = to.subtract(Duration(days: days - 1));
+    final maps = await store.readRange(
+      metric: HealthMetric.activity,
+      from: from,
+      to: to,
+    );
+    return maps.map(parseWorkout).whereType<WorkoutReading>().toList()
+      ..sort((a, b) => b.start.compareTo(a.start));
   }
 
   /// Keeps the preferred source per `(start,end)` step interval before summing.

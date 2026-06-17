@@ -101,6 +101,29 @@ void main() {
     );
   }
 
+  Future<void> putWorkout(
+    DateTime start,
+    DateTime end,
+    String name,
+    HealthSource source, {
+    double? distance,
+    double? kcal,
+  }) async {
+    final sample = WorkoutSample(
+      start: start,
+      end: end,
+      source: source,
+      activityName: name,
+      totalDistanceMeters: distance,
+      totalEnergyKcal: kcal,
+    );
+    await store.append(
+      metric: HealthMetric.activity,
+      day: start,
+      dataPoints: [mapper.toDataPoint(sample)],
+    );
+  }
+
   test('latestScalar returns the most recent weight', () async {
     await putScalar(
       HealthMetric.weight,
@@ -255,5 +278,89 @@ void main() {
     final nights = await service.lastNNights(7);
     expect(nights.length, greaterThanOrEqualTo(2));
     expect(nights.first.start.isAfter(nights.last.start), isTrue);
+  });
+
+  test('scalarSeries returns weight readings oldest-first', () async {
+    await putScalar(
+      HealthMetric.weight,
+      DateTime(2026, 6, 16, 9),
+      86,
+      'kg',
+      src('scale'),
+    );
+    await putScalar(
+      HealthMetric.weight,
+      DateTime(2026, 6, 10, 8),
+      80,
+      'kg',
+      src('scale'),
+    );
+    final series = await service.scalarSeries(HealthMetric.weight, days: 30);
+    expect(series.map((r) => r.value).toList(), [80, 86]);
+  });
+
+  test('dailySteps totals per day and zero-fills empty days', () async {
+    // Two sources on the 16th overlap (deduped), plus a record on the 14th.
+    final t0 = DateTime(2026, 6, 16, 6);
+    final t1 = t0.add(const Duration(minutes: 1));
+    await putSteps(t0, t1, 100, src('phone'));
+    await putSteps(t0, t1, 90, src('fitband')); // wearable preferred
+    await putSteps(
+      DateTime(2026, 6, 14, 7),
+      DateTime(2026, 6, 14, 8),
+      500,
+      src('phone'),
+    );
+    final series = await service.dailySteps(days: 3); // 14th, 15th, 16th
+    expect(series.map((d) => d.value).toList(), [500, 0, 90]);
+    expect(series.first.day, DateTime(2026, 6, 14));
+    expect(series.last.day, DateTime(2026, 6, 16));
+  });
+
+  test('dailyHeartRate aggregates min/mean/max per day', () async {
+    await putScalar(
+      HealthMetric.heartRate,
+      DateTime(2026, 6, 16, 6),
+      60,
+      'bpm',
+      src('fitband'),
+    );
+    await putScalar(
+      HealthMetric.heartRate,
+      DateTime(2026, 6, 16, 18),
+      120,
+      'bpm',
+      src('fitband'),
+    );
+    final stats = await service.dailyHeartRate(days: 7);
+    expect(stats, hasLength(1));
+    expect(stats.single.min, 60);
+    expect(stats.single.max, 120);
+    expect(stats.single.mean, 90);
+    expect(stats.single.count, 2);
+  });
+
+  test('recentWorkouts returns workouts most-recent first', () async {
+    await putWorkout(
+      DateTime(2026, 6, 12, 7),
+      DateTime(2026, 6, 12, 8),
+      'walking',
+      src('fitband'),
+      distance: 3000,
+      kcal: 150,
+    );
+    await putWorkout(
+      DateTime(2026, 6, 15, 18),
+      DateTime(2026, 6, 15, 19),
+      'running',
+      src('fitband'),
+      distance: 8000,
+    );
+    final workouts = await service.recentWorkouts(days: 14);
+    expect(workouts.map((w) => w.activityName).toList(), [
+      'running',
+      'walking',
+    ]);
+    expect(workouts.first.distanceMeters, 8000);
   });
 }

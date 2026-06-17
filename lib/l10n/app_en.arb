@@ -156,6 +156,78 @@
     "placeholders": { "minutes": { "type": "int" } }
   },
 
+  "backupNudge": "Your history lives in your Nextcloud — make sure it's backed up.",
+  "@backupNudge": { "description": "Gentle, non-blocking reminder that the synced files are the only long-term copy (DESIGN §10.2)." },
+
+  "metricLastDays": "Last {days} days",
+  "@metricLastDays": {
+    "description": "Sub-heading describing the window a per-category chart covers.",
+    "placeholders": { "days": { "type": "int" } }
+  },
+  "metricLoadError": "Couldn't load this data.",
+  "@metricLoadError": { "description": "Generic error shown when a data screen fails to read from the local cache (no raw error text)." },
+
+  "weightTitle": "Weight",
+  "@weightTitle": { "description": "Title of the weight detail screen and home card." },
+  "weightEmpty": "No weight data yet.",
+  "@weightEmpty": { "description": "Empty state of the weight detail screen." },
+  "weightLatest": "Latest",
+  "@weightLatest": { "description": "Tile label: the most recent weight." },
+  "weightChange": "Change",
+  "@weightChange": { "description": "Tile label: weight change over the shown window." },
+
+  "stepsTitle": "Steps",
+  "@stepsTitle": { "description": "Title of the steps detail screen." },
+  "stepsEmpty": "No step data yet.",
+  "@stepsEmpty": { "description": "Empty state of the steps detail screen." },
+  "stepsToday": "Today",
+  "@stepsToday": { "description": "Tile label: today's step total on the steps screen." },
+  "stepsDailyAverage": "Daily average",
+  "@stepsDailyAverage": { "description": "Tile label: mean steps/day over the window." },
+
+  "heartRateTitle": "Heart rate",
+  "@heartRateTitle": { "description": "Title of the heart-rate detail screen." },
+  "heartRateEmpty": "No heart-rate data yet.",
+  "@heartRateEmpty": { "description": "Empty state of the heart-rate detail screen." },
+  "heartRateLatest": "Latest",
+  "@heartRateLatest": { "description": "Tile label: the most recent heart-rate reading." },
+  "heartRateAverage": "Average",
+  "@heartRateAverage": { "description": "Tile label: mean heart rate over the window." },
+  "heartRateRange": "Range",
+  "@heartRateRange": { "description": "Tile label: lowest–highest heart rate over the window." },
+  "heartRateRangeValue": "{min}–{max}",
+  "@heartRateRangeValue": {
+    "description": "A min–max heart-rate range (bpm implied by the tile).",
+    "placeholders": { "min": { "type": "String" }, "max": { "type": "String" } }
+  },
+  "heartRateDailyAverage": "Daily average",
+  "@heartRateDailyAverage": { "description": "Section title above the daily-average heart-rate chart." },
+
+  "activityTitle": "Activity",
+  "@activityTitle": { "description": "Title of the activity detail screen and home card." },
+  "activityEmpty": "No workouts yet.",
+  "@activityEmpty": { "description": "Empty state of the activity detail screen." },
+  "activityWorkoutCount": "{count, plural, =0{No workouts} =1{1 workout} other{{count} workouts}}",
+  "@activityWorkoutCount": {
+    "description": "Header summarising how many workouts are in the window.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "homeActivityRecent": "{count, plural, =0{No recent workouts} =1{1 recent workout} other{{count} recent workouts}}",
+  "@homeActivityRecent": {
+    "description": "Home activity-card subtitle: recent workout count.",
+    "placeholders": { "count": { "type": "int" } }
+  },
+  "workoutDistance": "{km} km",
+  "@workoutDistance": {
+    "description": "A workout distance in kilometres.",
+    "placeholders": { "km": { "type": "String" } }
+  },
+  "workoutEnergy": "{kcal} kcal",
+  "@workoutEnergy": {
+    "description": "A workout's energy burned in kilocalories.",
+    "placeholders": { "kcal": { "type": "String" } }
+  },
+
   "settingsTitle": "Settings",
   "@settingsTitle": { "description": "App-bar title of the settings screen." },
   "settingsNextcloud": "Nextcloud",

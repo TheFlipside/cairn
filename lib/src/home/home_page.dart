@@ -2,6 +2,10 @@ import 'package:cairn/l10n/app_localizations.dart';
 import 'package:cairn/src/format/duration_format.dart';
 import 'package:cairn/src/format/locale_format.dart';
 import 'package:cairn/src/health/health_metric.dart';
+import 'package:cairn/src/metrics/activity_page.dart';
+import 'package:cairn/src/metrics/heart_rate_page.dart';
+import 'package:cairn/src/metrics/steps_page.dart';
+import 'package:cairn/src/metrics/weight_page.dart';
 import 'package:cairn/src/profile/bmi.dart';
 import 'package:cairn/src/profile/bmi_labels.dart';
 import 'package:cairn/src/profile/profile.dart';
@@ -35,9 +39,13 @@ class HomePage extends StatefulWidget {
   State<HomePage> createState() => _HomePageState();
 }
 
+/// Recent-workout window for the home Activity card.
+const int _recentWorkoutDays = 7;
+
 class _HomePageState extends State<HomePage> {
   late Future<_Overview> _data = _load();
   bool _busy = false;
+  bool _backupDismissed = false;
 
   @override
   void initState() {
@@ -67,8 +75,15 @@ class _HomePageState extends State<HomePage> {
       heartRate: await query.latestScalar(HealthMetric.heartRate),
       steps: await query.todayStepTotal(),
       lastNight: await query.lastNight(),
+      workoutCount: (await query.recentWorkouts(
+        days: _recentWorkoutDays,
+      )).length,
     );
   }
+
+  void _push(Widget page) => Navigator.of(
+    context,
+  ).push<void>(MaterialPageRoute<void>(builder: (_) => page));
 
   Future<void> _refresh() async {
     final messenger = ScaffoldMessenger.of(context);
@@ -108,6 +123,13 @@ class _HomePageState extends State<HomePage> {
         child: FutureBuilder<_Overview>(
           future: _data,
           builder: (context, snapshot) {
+            if (snapshot.hasError) {
+              // Scrollable so pull-to-refresh still works to retry.
+              return ListView(
+                padding: const EdgeInsets.all(24),
+                children: [Center(child: Text(l10n.metricLoadError))],
+              );
+            }
             if (!snapshot.hasData) {
               return const Center(child: CircularProgressIndicator());
             }
@@ -121,6 +143,7 @@ class _HomePageState extends State<HomePage> {
   Widget _content(BuildContext context, _Overview data) {
     final l10n = AppLocalizations.of(context);
     final locale = Localizations.localeOf(context).toLanguageTag();
+    final query = widget.services.query;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -130,6 +153,7 @@ class _HomePageState extends State<HomePage> {
             weight: data.weight,
             profile: profile,
             onAddProfile: widget.onOpenSettings,
+            onOpenWeight: () => _push(WeightPage(query: query)),
           ),
         ),
         _SleepCard(night: data.lastNight, onOpen: widget.onOpenSleep),
@@ -142,6 +166,7 @@ class _HomePageState extends State<HomePage> {
                 value: data.steps == null
                     ? '—'
                     : formatInteger(data.steps!, locale: locale),
+                onTap: () => _push(StepsPage(query: query)),
               ),
             ),
             Expanded(
@@ -153,10 +178,24 @@ class _HomePageState extends State<HomePage> {
                     : l10n.homeHeartRateValue(
                         data.heartRate!.value.round().toString(),
                       ),
+                onTap: () => _push(HeartRatePage(query: query)),
               ),
             ),
           ],
         ),
+        Card(
+          child: ListTile(
+            leading: const Icon(Icons.fitness_center),
+            title: Text(l10n.activityTitle),
+            subtitle: Text(l10n.homeActivityRecent(data.workoutCount)),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _push(ActivityPage(query: query)),
+          ),
+        ),
+        if (!_backupDismissed)
+          _BackupNudge(
+            onDismiss: () => setState(() => _backupDismissed = true),
+          ),
       ],
     );
   }
@@ -168,12 +207,14 @@ class _Overview {
     required this.heartRate,
     required this.steps,
     required this.lastNight,
+    required this.workoutCount,
   });
 
   final ScalarReading? weight;
   final ScalarReading? heartRate;
   final double? steps;
   final NightSleep? lastNight;
+  final int workoutCount;
 }
 
 class _BmiCard extends StatelessWidget {
@@ -181,11 +222,13 @@ class _BmiCard extends StatelessWidget {
     required this.weight,
     required this.profile,
     required this.onAddProfile,
+    required this.onOpenWeight,
   });
 
   final ScalarReading? weight;
   final Profile profile;
   final VoidCallback onAddProfile;
+  final VoidCallback onOpenWeight;
 
   @override
   Widget build(BuildContext context) {
@@ -217,46 +260,49 @@ class _BmiCard extends StatelessWidget {
     final color = bmi.category.isNormal ? Colors.green : Colors.orange;
     final age = profile.ageYears(DateTime.now());
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(l10n.bmiLabel, style: theme.textTheme.labelMedium),
-                Text(
-                  formatDecimal(bmi.value, locale: locale),
-                  style: theme.textTheme.headlineMedium,
-                ),
-              ],
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Column(
+      child: InkWell(
+        onTap: onOpenWeight,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.circle, size: 12, color: color),
-                      const SizedBox(width: 6),
-                      Text(
-                        bmiCategoryLabel(l10n, bmi.category),
-                        style: theme.textTheme.titleMedium,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
+                  Text(l10n.bmiLabel, style: theme.textTheme.labelMedium),
                   Text(
-                    age == null
-                        ? l10n.bmiWeightOnly(weightLine)
-                        : l10n.bmiWeightAndAge(weightLine, age),
-                    style: theme.textTheme.bodySmall,
+                    formatDecimal(bmi.value, locale: locale),
+                    style: theme.textTheme.headlineMedium,
                   ),
                 ],
               ),
-            ),
-          ],
+              const SizedBox(width: 20),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.circle, size: 12, color: color),
+                        const SizedBox(width: 6),
+                        Text(
+                          bmiCategoryLabel(l10n, bmi.category),
+                          style: theme.textTheme.titleMedium,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      age == null
+                          ? l10n.bmiWeightOnly(weightLine)
+                          : l10n.bmiWeightAndAge(weightLine, age),
+                      style: theme.textTheme.bodySmall,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -303,25 +349,68 @@ class _StatCard extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.value,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final String value;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     return Card(
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: theme.colorScheme.primary),
+              const SizedBox(height: 8),
+              Text(value, style: theme.textTheme.titleLarge),
+              Text(label, style: theme.textTheme.bodySmall),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A gentle, dismissible reminder that the synced files are the only long-term
+/// copy of the user's history (DESIGN.md §10.2).
+class _BackupNudge extends StatelessWidget {
+  const _BackupNudge({required this.onDismiss});
+
+  final VoidCallback onDismiss;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final l10n = AppLocalizations.of(context);
+    return Card(
+      color: theme.colorScheme.surfaceContainerHighest,
       child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        padding: const EdgeInsets.fromLTRB(16, 12, 8, 12),
+        child: Row(
           children: [
-            Icon(icon, color: theme.colorScheme.primary),
-            const SizedBox(height: 8),
-            Text(value, style: theme.textTheme.titleLarge),
-            Text(label, style: theme.textTheme.bodySmall),
+            Icon(
+              Icons.cloud_outlined,
+              size: 20,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(l10n.backupNudge, style: theme.textTheme.bodySmall),
+            ),
+            IconButton(
+              icon: const Icon(Icons.close, size: 18),
+              tooltip: MaterialLocalizations.of(context).closeButtonTooltip,
+              onPressed: onDismiss,
+            ),
           ],
         ),
       ),
