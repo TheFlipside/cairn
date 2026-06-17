@@ -377,9 +377,11 @@ because the on-disk format is the one genuinely expensive thing to change
   framing.
 - **Done:** [`docs/RELEASE.md`](RELEASE.md) — a step-by-step per-channel release
   guide (F-Droid official + self-hosted, sideload, Google Play, Apple App Store,
-  Nextcloud App Store) plus the Nextcloud-major version-tracking routine.
-- **Remaining:** publish a privacy policy (`docs/PRIVACY.md` → public URL);
-  complete the actual store declarations/build for the chosen channel(s).
+  Nextcloud App Store) plus the Nextcloud-major version-tracking routine; and a
+  drafted privacy policy ([`docs/PRIVACY.md`](PRIVACY.md)).
+- **Remaining:** fill the `PRIVACY.md` placeholders and publish it to a public,
+  non-geofenced HTTPS URL; complete the actual store declarations/build for the
+  chosen channel(s).
 
 ### Phase 7 — Nextcloud web app (v1.5) ⬜
 

@@ -14,6 +14,13 @@ All notable changes to this project are documented in this file.
   publishing). Includes a dedicated routine for keeping the Nextcloud app
   current across Nextcloud major releases. Cross-linked from DESIGN.md §10.3
   and §15.
+- **`docs/PRIVACY.md` — drafted privacy policy (Phase 6).** Reflects Cairn's
+  "the developer collects and stores nothing" model: health data is read-only,
+  lives only on-device and in the user's own Nextcloud (never iCloud or any
+  developer/third-party cloud), no advertising/analytics/trackers, HTTPS-only,
+  app-token in OS secure storage, with clear data-deletion steps. Written to
+  satisfy the Apple/Google privacy-policy requirements; contact + published-URL
+  placeholders to fill before release.
 
 - **Opportunistic background sync (Phase 5, §4.4).** A periodic task (every
   ~6 h, network-required, not on low battery) reads the health store and
