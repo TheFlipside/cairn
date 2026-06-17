@@ -103,6 +103,10 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
+- Per-category chart Y-axis labels no longer overlap or wrap to two lines when
+  the value spread is small (e.g. a weight trend within ~1 kg). The axis now
+  snaps to a round step (locale-formatted, e.g. `73,0` under German) with a
+  wider gutter, instead of fl_chart's dense, full-precision defaults.
 - Backdated / late-arriving health data is now imported: each ingest re-reads a
   trailing reconcile window (default 14 days), not just `[anchor, now]`, so a
   reading logged after a prior sync (e.g. a workout entered this morning) is

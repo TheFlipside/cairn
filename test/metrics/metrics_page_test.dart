@@ -156,6 +156,19 @@ void main() {
     expect(find.text('No workouts yet.'), findsOneWidget);
   });
 
+  testWidgets('weight chart Y-axis uses round, non-wrapping labels', (
+    tester,
+  ) async {
+    // A tiny spread (<1 kg) used to render dense, full-precision labels that
+    // wrapped to two lines. The axis now snaps to a 0.2 step.
+    final query = _FakeQuery()
+      ..weight = [kg(14, 72.7), kg(15, 73), kg(16, 73.5)];
+    await tester.pumpWidget(wrap(WeightPage(query: query)));
+    await tester.pumpAndSettle();
+    expect(find.text('73.0'), findsWidgets); // a round step tick
+    expect(find.text('72.7'), findsNothing); // raw value is not an axis label
+  });
+
   testWidgets('detail page surfaces a generic error on read failure', (
     tester,
   ) async {
