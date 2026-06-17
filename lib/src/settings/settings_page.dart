@@ -44,8 +44,8 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Future<void> _load() async {
     final credentials = await widget.services.coordinator.currentCredentials();
-    final profile = await widget.services.profileStore.read();
     if (!mounted) return;
+    final profile = widget.services.profile.value;
     setState(() {
       _connection = credentials == null
           ? 'Not connected'
@@ -127,7 +127,9 @@ class _SettingsPageState extends State<SettingsPage> {
       dateOfBirth: _profile.dateOfBirth,
     );
     await widget.services.profileStore.write(next);
+    // The shell (and the notifier it owns) may be gone after the await.
     if (!mounted) return;
+    widget.services.profile.value = next; // notify Home's BMI card
     setState(() => _profile = next);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -148,6 +150,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final next = _profile.copyWith(dateOfBirth: picked);
     await widget.services.profileStore.write(next);
     if (!mounted) return;
+    widget.services.profile.value = next; // notify Home's BMI card
     setState(() => _profile = next);
   }
 

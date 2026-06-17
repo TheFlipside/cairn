@@ -44,7 +44,6 @@ class _HomePageState extends State<HomePage> {
       heartRate: await query.latestScalar(HealthMetric.heartRate),
       steps: await query.todayStepTotal(),
       lastNight: await query.lastNight(),
-      profile: await widget.services.profileStore.read(),
     );
   }
 
@@ -118,10 +117,13 @@ class _HomePageState extends State<HomePage> {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        _BmiCard(
-          weight: data.weight,
-          profile: data.profile,
-          onAddProfile: widget.onOpenSettings,
+        ValueListenableBuilder<Profile>(
+          valueListenable: widget.services.profile,
+          builder: (context, profile, _) => _BmiCard(
+            weight: data.weight,
+            profile: profile,
+            onAddProfile: widget.onOpenSettings,
+          ),
         ),
         _SleepCard(night: data.lastNight, onOpen: widget.onOpenSleep),
         Row(
@@ -157,14 +159,12 @@ class _Overview {
     required this.heartRate,
     required this.steps,
     required this.lastNight,
-    required this.profile,
   });
 
   final ScalarReading? weight;
   final ScalarReading? heartRate;
   final double? steps;
   final NightSleep? lastNight;
-  final Profile profile;
 }
 
 class _BmiCard extends StatelessWidget {

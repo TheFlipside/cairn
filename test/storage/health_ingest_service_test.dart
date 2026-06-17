@@ -27,7 +27,11 @@ class _FakeRepository implements HealthRepository {
     required DateTime end,
   }) async {
     reads.add((metric: metric, start: start, end: end));
-    return samples[metric] ?? const [];
+    // Behave like the real store: only return samples whose effective time is
+    // within the requested window, so window logic is actually exercised.
+    return (samples[metric] ?? const [])
+        .where((s) => !s.start.isBefore(start) && !s.start.isAfter(end))
+        .toList();
   }
 }
 
@@ -157,29 +161,149 @@ void main() {
     },
   );
 
-  test('a second run reads from the advanced anchor', () async {
-    final repo = _FakeRepository({HealthMetric.steps: const []});
-    final firstNow = DateTime(2026, 6, 14, 12);
-    await HealthIngestService(
-      repository: repo,
-      store: store,
-      clock: () => firstNow,
-    ).ingest({HealthMetric.steps});
-    // First run has no anchor → window starts ~30 days back.
-    expect(
-      repo.reads.last.start.isBefore(
-        firstNow.subtract(const Duration(days: 29)),
-      ),
-      isTrue,
-    );
+  test(
+    'a second run re-reads the reconcile window, not just the anchor',
+    () async {
+      final repo = _FakeRepository({HealthMetric.steps: const []});
+      final firstNow = DateTime(2026, 6, 14, 12);
+      await HealthIngestService(
+        repository: repo,
+        store: store,
+        clock: () => firstNow,
+      ).ingest({HealthMetric.steps});
+      // First run has no anchor → window starts ~30 days back.
+      expect(
+        repo.reads.last.start.isBefore(
+          firstNow.subtract(const Duration(days: 29)),
+        ),
+        isTrue,
+      );
 
-    final secondNow = DateTime(2026, 6, 15, 12);
+      final secondNow = DateTime(2026, 6, 15, 12);
+      await HealthIngestService(
+        repository: repo,
+        store: store,
+        clock: () => secondNow,
+      ).ingest({HealthMetric.steps});
+      // Second run goes back the reconcile window (well before the anchor) so
+      // backdated entries are still caught.
+      expect(
+        repo.reads.last.start.isAtSameMomentAs(
+          secondNow.subtract(const Duration(days: 14)),
+        ),
+        isTrue,
+      );
+      expect(repo.reads.last.start.isBefore(firstNow), isTrue);
+    },
+  );
+
+  test('imports a backdated reading on a later run', () async {
+    final repo = _FakeRepository({HealthMetric.weight: []});
     await HealthIngestService(
       repository: repo,
       store: store,
-      clock: () => secondNow,
-    ).ingest({HealthMetric.steps});
-    // Second run starts from the anchor the first run wrote.
-    expect(repo.reads.last.start.isAtSameMomentAs(firstNow), isTrue);
+      clock: () => DateTime(2026, 6, 14, 12),
+    ).ingest({HealthMetric.weight});
+
+    // User logs a weight dated yesterday — before the anchor, within the
+    // reconcile window.
+    final backdated = DateTime(2026, 6, 13, 8);
+    repo.samples[HealthMetric.weight] = [
+      ScalarSample(
+        metric: HealthMetric.weight,
+        value: 80,
+        unit: 'kg',
+        start: backdated,
+        end: backdated,
+        source: source,
+      ),
+    ];
+    final results = await HealthIngestService(
+      repository: repo,
+      store: store,
+      clock: () => DateTime(2026, 6, 14, 18),
+    ).ingest({HealthMetric.weight});
+
+    expect(results.single.dataPointCount, 1);
+    final onDisk = await store.readRange(
+      metric: HealthMetric.weight,
+      from: backdated,
+      to: DateTime(2026, 6, 14, 18),
+    );
+    expect(onDisk, hasLength(1));
+  });
+
+  test(
+    're-ingesting sleep does not duplicate stage or episode lines',
+    () async {
+      final night = DateTime(2026, 6, 13, 23);
+      final repo = _FakeRepository({
+        HealthMetric.sleep: [
+          SleepSegmentSample(
+            start: night,
+            end: night.add(const Duration(minutes: 60)),
+            source: source,
+            stage: SleepStage.deep,
+          ),
+        ],
+      });
+      final first = await HealthIngestService(
+        repository: repo,
+        store: store,
+        clock: () => DateTime(2026, 6, 14, 12),
+      ).ingest({HealthMetric.sleep});
+      expect(first.single.dataPointCount, 2); // one stage + one episode line
+
+      final second = await HealthIngestService(
+        repository: repo,
+        store: store,
+        clock: () => DateTime(2026, 6, 14, 18),
+      ).ingest({HealthMetric.sleep});
+      expect(second.single.dataPointCount, 0); // neither line re-written
+
+      final onDisk = await store.readRange(
+        metric: HealthMetric.sleep,
+        from: night,
+        to: DateTime(2026, 6, 14, 18),
+      );
+      expect(onDisk, hasLength(2));
+    },
+  );
+
+  test('re-ingesting the same data does not duplicate it', () async {
+    final t = DateTime(2026, 6, 14, 8);
+    final repo = _FakeRepository({
+      HealthMetric.weight: [
+        ScalarSample(
+          metric: HealthMetric.weight,
+          value: 70,
+          unit: 'kg',
+          start: t,
+          end: t,
+          source: source,
+        ),
+      ],
+    });
+    final first = await HealthIngestService(
+      repository: repo,
+      store: store,
+      clock: () => DateTime(2026, 6, 14, 12),
+    ).ingest({HealthMetric.weight});
+    expect(first.single.dataPointCount, 1);
+
+    // Same reading is still inside the next run's window — must not re-write.
+    final second = await HealthIngestService(
+      repository: repo,
+      store: store,
+      clock: () => DateTime(2026, 6, 14, 18),
+    ).ingest({HealthMetric.weight});
+    expect(second.single.dataPointCount, 0);
+
+    final onDisk = await store.readRange(
+      metric: HealthMetric.weight,
+      from: t,
+      to: DateTime(2026, 6, 14, 18),
+    );
+    expect(onDisk, hasLength(1));
   });
 }

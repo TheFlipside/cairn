@@ -67,6 +67,16 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
+- Backdated / late-arriving health data is now imported: each ingest re-reads a
+  trailing reconcile window (default 14 days), not just `[anchor, now]`, so a
+  reading logged after a prior sync (e.g. a workout entered this morning) is
+  still picked up. Appends are idempotent — a datapoint already on disk
+  (matched by content, ignoring its random id/creation time) is not re-written
+  — so the overlap never duplicates. Backdating beyond the window still needs
+  the change-token work (§4.3, Phase 8).
+- BMI updates immediately after editing height/date of birth: the profile is an
+  app-wide `ValueNotifier`, so the Home BMI card recomputes without a manual
+  refresh.
 - Workouts now read (Android): authorisation also requests the distance and
   calorie permissions the plugin reads alongside an exercise session, which
   previously failed with a `SecurityException` and returned no activities.
