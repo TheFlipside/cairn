@@ -17,7 +17,7 @@ import workmanager_apple
     // backgroundSyncTask in background_sync.dart and Info.plist's
     // BGTaskSchedulerPermittedIdentifiers; the OS decides actual timing.
     WorkmanagerPlugin.registerPeriodicTask(
-      withIdentifier: "io.github.theflipside.cairn.sync",
+      withIdentifier: "com.luminaapps.cairn.sync",
       frequency: NSNumber(value: 6 * 60 * 60)
     )
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)

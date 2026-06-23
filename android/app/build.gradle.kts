@@ -18,7 +18,7 @@ if (keystorePropertiesFile.exists()) {
 }
 
 android {
-    namespace = "io.github.theflipside.cairn"
+    namespace = "com.luminaapps.cairn"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -28,7 +28,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "io.github.theflipside.cairn"
+        applicationId = "com.luminaapps.cairn"
         // Health Connect requires Android 8.0 (API 26); see DEVELOPMENT.md §3.3.
         minSdk = 26
         targetSdk = flutter.targetSdkVersion

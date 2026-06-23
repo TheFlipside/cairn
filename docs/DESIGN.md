@@ -378,13 +378,15 @@ because the on-disk format is the one genuinely expensive thing to change
 - **Done:** [`docs/RELEASE.md`](RELEASE.md) — a step-by-step per-channel release
   guide (F-Droid official + self-hosted, sideload, Google Play, Apple App Store,
   Nextcloud App Store) plus the Nextcloud-major version-tracking routine; a
-  drafted privacy policy ([`docs/PRIVACY.md`](PRIVACY.md)); F-Droid packaging
-  (listing metadata under `fastlane/metadata/android/` + the fdroiddata recipe
-  `fdroid/io.github.theflipside.cairn.yml`); and a tag-triggered CI workflow
-  (`.forgejo/workflows/release.yml`) that builds + signs the APK and publishes a
-  GitHub Release.
-- **Remaining:** fill the `PRIVACY.md` placeholders and publish it to a public,
-  non-geofenced HTTPS URL; open the F-Droid RFP + fdroiddata MR; complete the
+  published privacy policy ([`docs/PRIVACY.md`](PRIVACY.md), live at
+  <https://luminaapps.com/cairn-privacy.html>); F-Droid packaging (listing
+  metadata + feature graphic under `fastlane/metadata/android/` + the fdroiddata
+  recipe `fdroid/com.luminaapps.cairn.yml`); and a tag-triggered CI workflow
+  (`.forgejo/workflows/release.yml`) that builds + signs the APK and publishes
+  it to both GitHub and Forgejo. App identity is `com.luminaapps.cairn`.
+- **Remaining:** open the F-Droid RFP + fdroiddata MR (recipe ready; add real
+  phone screenshots under
+  `fastlane/metadata/android/<locale>/images/phoneScreenshots/`); complete the
   store declarations/build for any other channel(s) pursued.
 
 ### Phase 7 — Nextcloud web app (v1.5) ⬜

@@ -69,7 +69,7 @@ reports 3.44.0.)
 ### 3.2 Get the project and verify the toolchain
 
 ```bash
-git clone https://github.com/TheFlipside/cairn.git
+git clone https://github.com/LuminaAppsDev/cairn.git
 cd cairn
 flutter pub get
 flutter doctor          # resolve any reported toolchain gaps before continuing

@@ -19,7 +19,7 @@ Cairn has **two independently-released artifacts**:
 
 | Artifact | Stack | Licence | Channels | Status |
 | --- | --- | --- | --- | --- |
-| **Mobile app** | Flutter (Android + iOS), `io.github.theflipside.cairn` | MIT | F-Droid, sideload, Google Play, Apple App Store | shipping (Phases 1–5) |
+| **Mobile app** | Flutter (Android + iOS), `com.luminaapps.cairn` | MIT | F-Droid, sideload, Google Play, Apple App Store | shipping (Phases 1–5) |
 | **Nextcloud web app** | classic Nextcloud app (PHP + Vue) | AGPL-3.0 | Nextcloud App Store | **not built yet — Phase 7**; §6 is forward-looking |
 
 **Distribution philosophy (DESIGN.md §10.3):** the strict, no-compromise build
@@ -98,7 +98,7 @@ Steps:
 1. Read **Submitting to F-Droid (Quick Start)** and the **Inclusion Policy**.
 2. Make sure each release is a **git tag** with a bumped `versionCode`.
 3. Open an **RFP (Request For Packaging)** issue, then a merge request adding a
-   metadata file to the **`fdroiddata`** repo (`metadata/io.github.theflipside.cairn.yml`):
+   metadata file to the **`fdroiddata`** repo (`metadata/com.luminaapps.cairn.yml`):
    licence, source/repo URLs, `Build:` block (the Flutter recipe above),
    `AutoUpdateMode`/`UpdateCheckMode: Tags`, and `CurrentVersion`/`CurrentVersionCode`.
 4. F-Droid CI builds it; iterate on the MR until it builds clean; on merge it's
@@ -109,12 +109,14 @@ Steps:
    paths leak in, then add `Builds: …` with your signing fingerprint.
 
 **In this repo:** a ready-to-submit recipe lives at
-[`fdroid/io.github.theflipside.cairn.yml`](../fdroid/io.github.theflipside.cairn.yml)
+[`fdroid/com.luminaapps.cairn.yml`](../fdroid/com.luminaapps.cairn.yml)
 — copy it into your `fdroiddata` fork as
-`metadata/io.github.theflipside.cairn.yml` for the merge request. The listing
-text (and future screenshots) are auto-imported by F-Droid from
+`metadata/com.luminaapps.cairn.yml` for the merge request. The listing
+text, changelogs and feature graphic are auto-imported by F-Droid from
 [`fastlane/metadata/android/`](../fastlane/metadata/android/), so they live with
-the app, not in the recipe. The recipe pins Flutter to the version it reads out
+the app, not in the recipe — **add your phone screenshots** under each locale's
+`images/phoneScreenshots/` (layout + specs in
+[`fastlane/metadata/README.md`](../fastlane/metadata/README.md)). The recipe pins Flutter to the version it reads out
 of `.forgejo/workflows/release.yml`, so CI and the F-Droid build stay in lockstep.
 
 Sources: [Submitting Quick Start](https://f-droid.org/en/docs/Submitting_to_F-Droid_Quick_Start_Guide/),
@@ -255,7 +257,7 @@ Sources: [Publish your health app](https://developer.android.com/health-and-fitn
 - Public privacy-policy URL (§1).
 
 ### One-time setup
-1. Register the bundle id `io.github.theflipside.cairn` and enable the
+1. Register the bundle id `com.luminaapps.cairn` and enable the
    **HealthKit** capability/entitlement.
 2. Create the app record in **App Store Connect**; configure signing
    (automatic, or manual with a distribution certificate + provisioning

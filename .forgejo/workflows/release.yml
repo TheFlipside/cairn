@@ -14,7 +14,7 @@
 #     with RELEASE_TOKEN, using the run's own GITHUB_SERVER_URL / REPOSITORY.
 #
 # F-Droid builds its OWN copy from source server-side (see
-# fdroid/io.github.theflipside.cairn.yml), so this workflow is only the
+# fdroid/com.luminaapps.cairn.yml), so this workflow is only the
 # direct-download / sideload APK.
 #
 # `uses:` are FULL URLs pinned to commit SHAs: a self-hosted Forgejo would
@@ -38,7 +38,7 @@ on:
 
 env:
   # GitHub owner/repo that receives the public release.
-  GH_REPO: TheFlipside/cairn
+  GH_REPO: LuminaAppsDev/cairn
   # Flutter SDK version — the single source of truth; the F-Droid recipe greps
   # this literal out of the file. Keep it a plain quoted number.
   FLUTTER_VERSION: '3.44.0'
@@ -47,6 +47,21 @@ jobs:
   release:
     runs-on: linux
     steps:
+      - name: Validate release tag
+        # The tag is interpolated into JSON, URLs and shell in the build and
+        # publish steps below, so validate it once here — before any step
+        # consumes it — rather than relying on a downstream step's internal
+        # check surviving a future reorder. Anchored: digits/dots with an
+        # optional -suffix only (rejects '#', '+', '@', whitespace, …);
+        # GITHUB_REF_NAME is fixed for the whole job.
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          if ! printf '%s' "$tag" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.]+)?$'; then
+            echo "Unexpected tag: $tag" >&2
+            exit 1
+          fi
+
       - name: Checkout
         uses: https://github.com/actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
@@ -106,13 +121,7 @@ jobs:
       - name: Package release asset
         run: |
           set -euo pipefail
-          tag="${GITHUB_REF_NAME}"
-          # Never interpolate an unvalidated tag into JSON/URLs/shell: anchored,
-          # digits/dots with an optional -suffix only (rejects '#', '+', '@', …).
-          if ! printf '%s' "$tag" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+(-[A-Za-z0-9.]+)?$'; then
-            echo "Unexpected tag: $tag" >&2
-            exit 1
-          fi
+          tag="${GITHUB_REF_NAME}"  # validated in the "Validate release tag" step
           asset="cairn-${tag}.apk"
           cp build/app/outputs/flutter-apk/app-release.apk "$asset"
           sha256sum "$asset" > "$asset.sha256"

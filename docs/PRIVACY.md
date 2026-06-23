@@ -1,15 +1,14 @@
 # Cairn — Privacy Policy
 
-> **Maintainer note — review before publishing (then delete this block).**
-> This is the source for Cairn's privacy policy. Before linking it from the app
-> stores: (1) fill the `[…]` placeholders (contact, published URL); (2) confirm
-> it matches what the app actually does for the version you ship; (3) keep it on
-> a **public, non-geofenced HTTPS URL** (Apple and Google both require this);
-> (4) make sure your Apple **App Privacy** label and Google Play **Data safety**
-> form say the same thing. This document is not legal advice — adapt it to your
-> jurisdiction (e.g. EU/GDPR) as needed.
+> **Canonical version.** The published, authoritative copy of this policy is at
+> <https://luminaapps.com/cairn-privacy.html>. This file is the in-repo source,
+> kept in sync for version history; if the two ever differ, the published page
+> wins. Keep the published copy on a **public, non-geofenced HTTPS URL** (Apple
+> and Google both require this), and make sure the Apple **App Privacy** label
+> and Google Play **Data safety** form say the same thing. Not legal advice —
+> adapt to your jurisdiction (e.g. EU/GDPR) as needed.
 
-**Last updated:** 2026-06-17
+**Last updated:** 2026-06-23
 
 ## The short version
 
@@ -100,5 +99,5 @@ version will be published at the same URL.
 
 ## Contact
 
-Questions about this policy or your privacy: **[your contact email]**
-(project: **[your project/repository URL]**).
+Questions about this policy or your privacy: email <luminaapps@gmail.com>, or
+open an issue at <https://github.com/LuminaAppsDev/cairn/issues>.

@@ -4,6 +4,45 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+## 0.1.1 — 2026-06-23
+
+Moved the project under the **LuminaApps** identity and prepared the F-Droid
+listing graphics. No functional changes to health reading, the OMH format, or
+sync.
+
+### Changed
+
+- **Application identity → `com.luminaapps.cairn`.** Renamed the Android
+  `applicationId`/namespace, the iOS bundle identifiers, and the background-sync
+  task identifier from `io.github.theflipside.cairn` to the reverse-domain of
+  `luminaapps.com` (a domain the project controls). This is a **new package
+  identity**: a 0.1.0 sideload install does not upgrade in place — uninstall and
+  reinstall (the local cache rebuilds from your Nextcloud; OS health permissions
+  are re-granted). The fdroiddata recipe is renamed to
+  `fdroid/com.luminaapps.cairn.yml` and its seed build is anchored to the
+  `v0.1.1` tag, since the `v0.1.0` APK still carries the old id.
+- **Public repository → `github.com/LuminaAppsDev/cairn`.** Updated the F-Droid
+  recipe URLs, the release workflow's `GH_REPO`, and the docs clone URL.
+- **Privacy policy published.** `docs/PRIVACY.md` now points at the canonical
+  published copy at <https://luminaapps.com/cairn-privacy.html> (dated
+  2026-06-23) with the repository URL filled in.
+
+### Added
+
+- **F-Droid listing graphics.** A generated 1024×500 `featureGraphic.png` per
+  locale, `images/phoneScreenshots/` directories for the (manually captured)
+  screenshots, a feature-graphic generator at
+  `tool/generate_feature_graphic.py`, and `fastlane/metadata/README.md`
+  documenting the layout and screenshot specs.
+
+### Fixed
+
+- **Home screen could fail with "Couldn't load this data" on a device with no
+  synced data yet** (e.g. a fresh install). Reconciling an empty set of sleep
+  readings returned a `const` list that the query layer then sorted in place,
+  throwing "Cannot modify an unmodifiable list". It now returns a mutable empty
+  list, with a regression test covering the empty-store path.
+
 ## 0.1.0 — 2026-06-17
 
 First release. Reads Apple Health / Android Health Connect, normalizes to Open

@@ -7,7 +7,7 @@ import 'package:workmanager/workmanager.dart';
 /// On iOS this exact string must also appear in `Info.plist`
 /// (`BGTaskSchedulerPermittedIdentifiers`) and be registered in
 /// `AppDelegate.swift`.
-const String backgroundSyncTask = 'io.github.theflipside.cairn.sync';
+const String backgroundSyncTask = 'com.luminaapps.cairn.sync';
 
 /// How often the OS is *asked* to run a background sync. The OS coalesces and
 /// throttles this (Android floors at 15 min; iOS decides entirely), so treat it

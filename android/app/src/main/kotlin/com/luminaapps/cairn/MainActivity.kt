@@ -1,4 +1,4 @@
-package io.github.theflipside.cairn
+package com.luminaapps.cairn
 
 import io.flutter.embedding.android.FlutterFragmentActivity
 
