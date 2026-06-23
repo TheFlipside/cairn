@@ -22,21 +22,21 @@ RepoType: git
 Repo: https://github.com/LuminaAppsDev/cairn.git
 
 Builds:
-  # Seed build: the first launchable release under the com.luminaapps.cairn id.
-  # v0.1.0 carried the old io.github.theflipside.cairn id, and v0.1.1 crashed on
-  # launch (R8 stripped a WorkManager class), so v0.1.2 is the first valid seed.
-  - versionName: 0.1.2
-    versionCode: 3
-    commit: v0.1.2
+  # Seed build: the first release that builds cleanly on F-Droid's server.
+  # Earlier tags don't qualify — v0.1.0 used the old application id, v0.1.1
+  # crashed on launch (R8), and v0.1.2's build.gradle.kts didn't survive
+  # F-Droid's signing-config scrub — so v0.1.3 is the seed.
+  - versionName: 0.1.3
+    versionCode: 4
+    commit: v0.1.3
     output: build/app/outputs/flutter-apk/app-release.apk
     srclibs:
       - flutter@stable
+    # Drop the iOS platform dir from the Android build. Only android + ios
+    # exist (the app targets Android + iOS); F-Droid errors if an rm: glob
+    # matches nothing, so list only dirs that are actually present.
     rm:
       - ios
-      - linux
-      - macos
-      - web
-      - windows
     prebuild:
       # Pin Flutter to the exact version CI builds with — single source of truth
       # is the literal `FLUTTER_VERSION:` in .forgejo/workflows/release.yml.
@@ -55,5 +55,5 @@ Builds:
 # New tags matching the version are picked up automatically.
 AutoUpdateMode: Version
 UpdateCheckMode: Tags
-CurrentVersion: 0.1.2
-CurrentVersionCode: 3
+CurrentVersion: 0.1.3
+CurrentVersionCode: 4

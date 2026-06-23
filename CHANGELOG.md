@@ -4,6 +4,25 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+## 0.1.3 — 2026-06-23
+
+Patch release: makes the source build cleanly on F-Droid's build server.
+No functional or behavioral changes to the app.
+
+### Fixed
+
+- **F-Droid build compatibility** (found by test-building the recipe with
+  `fdroid build`):
+  - The recipe's `rm:` listed platform dirs (`linux`/`macos`/`web`/`windows`)
+    that don't exist in this Android+iOS project; F-Droid aborts when an `rm:`
+    glob matches nothing. Trimmed to `ios`.
+  - F-Droid strips signing configs from `build.gradle.kts` (it signs with its
+    own key), and its line-based scrubber mangled the multi-line
+    `signingConfig = … ?: …` expression into invalid Kotlin. Rewrote the
+    release signing as two single-statement assignments — a debug default,
+    overridden when `android/key.properties` exists — which the scrubber
+    removes cleanly. Locally- and CI-signed builds behave exactly as before.
+
 ## 0.1.2 — 2026-06-23
 
 Patch release: fixes a crash on launch in release builds and adds store

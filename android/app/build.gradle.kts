@@ -49,11 +49,16 @@ android {
 
     buildTypes {
         release {
-            // Real keystore when android/key.properties is provided; otherwise
-            // fall back to debug signing so `flutter run --release` still works
-            // for local development.
-            signingConfig = signingConfigs.findByName("release")
-                ?: signingConfigs.getByName("debug")
+            // Default to debug signing so `flutter run --release` works without a
+            // keystore; the line below overrides it when android/key.properties
+            // exists. Each assignment is a single statement whose value has no
+            // spaces, so F-Droid's signing-config scrubber strips both cleanly
+            // (F-Droid builds unsigned and signs with its own key). A multi-line
+            // or spaced expression here breaks that scrub. See DEVELOPMENT.md §3.3.
+            signingConfig = signingConfigs.getByName("debug")
+            if (keystorePropertiesFile.exists()) {
+                signingConfig = signingConfigs.getByName("release")
+            }
         }
     }
 }
