@@ -89,7 +89,12 @@ List<NightSleep> reconcileNights(
   List<SleepEpisodeReading> storedEpisodes, {
   SleepEpisodeAggregator aggregator = const SleepEpisodeAggregator(),
 }) {
-  if (stages.isEmpty) return const [];
+  // A growable (not `const`) empty list: callers sort the result in place
+  // (see health_query_service.lastNNights), and sorting a const list throws
+  // "Cannot modify an unmodifiable list" — which an empty-data device hits.
+  // No stages also means no nights even when storedEpisodes is non-empty:
+  // episode-only sources aren't reconstructed in v1 (DESIGN.md §4.3).
+  if (stages.isEmpty) return <NightSleep>[];
   final unique = _dedupStages(stages);
   final episodes = aggregator.aggregate(unique.map(_toSegment).toList());
   return [

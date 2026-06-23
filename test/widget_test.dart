@@ -38,7 +38,12 @@ void main() {
     }
 
     expect(find.byType(NavigationBar), findsOneWidget);
-    expect(find.text('Sleep'), findsOneWidget);
-    expect(find.text('Settings'), findsOneWidget);
+    // Match the nav destinations specifically: once the Home overview loads it
+    // renders its own "Sleep" tile, so a bare find.text('Sleep') is ambiguous.
+    expect(find.widgetWithText(NavigationDestination, 'Sleep'), findsOneWidget);
+    expect(
+      find.widgetWithText(NavigationDestination, 'Settings'),
+      findsOneWidget,
+    );
   });
 }

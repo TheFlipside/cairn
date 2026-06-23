@@ -280,6 +280,14 @@ void main() {
     expect(nights.first.start.isAfter(nights.last.start), isTrue);
   });
 
+  test('lastNight / lastNNights are empty (not an error) on no data', () async {
+    // Regression: reconcileNights returned a `const []` that the service then
+    // sorted in place, throwing "Cannot modify an unmodifiable list" on a
+    // fresh, empty install (the home screen showed "Couldn't load this data").
+    expect(await service.lastNight(), isNull);
+    expect(await service.lastNNights(7), isEmpty);
+  });
+
   test('scalarSeries returns weight readings oldest-first', () async {
     await putScalar(
       HealthMetric.weight,
