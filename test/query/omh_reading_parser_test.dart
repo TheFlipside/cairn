@@ -49,6 +49,32 @@ void main() {
       expect(reading?.unit, 'kg');
     });
 
+    test('reads ingestedAt from the header creation_date_time', () {
+      final map = _withBody('body-weight', {
+        'body_weight': {'value': 80.0, 'unit': 'kg'},
+        'effective_time_frame': {'date_time': '2026-06-16T15:33:55+02:00'},
+      });
+      (map['header']! as Map<String, Object?>)['creation_date_time'] =
+          '2026-06-16T15:34:10+02:00';
+      final reading = parseScalar(map);
+      // 15:34:10+02:00 == 13:34:10Z; the read path orders corrections by this.
+      expect(
+        reading?.ingestedAt?.toUtc(),
+        DateTime.utc(2026, 6, 16, 13, 34, 10),
+      );
+    });
+
+    test('ingestedAt is null when the header omits creation_date_time', () {
+      final reading = parseScalar(
+        _withBody('body-weight', {
+          'body_weight': {'value': 80.0, 'unit': 'kg'},
+          'effective_time_frame': {'date_time': '2026-06-16T15:33:55+02:00'},
+        }),
+      );
+      expect(reading, isNotNull);
+      expect(reading!.ingestedAt, isNull);
+    });
+
     test('returns null on a missing value', () {
       final reading = parseScalar(
         _withBody('heart-rate', {

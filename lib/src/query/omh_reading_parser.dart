@@ -30,6 +30,7 @@ ScalarReading? parseScalar(Map<String, Object?> map) {
     unit: value.unit,
     at: at,
     source: _provenance(map),
+    ingestedAt: _ingestedAt(map),
   );
 }
 
@@ -155,6 +156,14 @@ DateTime? _pointTime(Map<String, Object?> body) {
   final end = _parseTs(_str(interval, 'end_date_time'));
   if (start == null || end == null) return null;
   return (start: start, end: end);
+}
+
+/// The OMH header's `creation_date_time` — the instant Cairn wrote the
+/// datapoint to the cache — parsed to local time, or `null` if absent. The read
+/// path orders corrected readings by this (latest-ingested wins, §4.3).
+DateTime? _ingestedAt(Map<String, Object?> map) {
+  final header = _obj(map, 'header');
+  return header == null ? null : _parseTs(_str(header, 'creation_date_time'));
 }
 
 ReadingSource? _provenance(Map<String, Object?> map) {

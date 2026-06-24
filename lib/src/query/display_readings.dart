@@ -31,6 +31,7 @@ class ScalarReading {
     required this.unit,
     required this.at,
     this.source,
+    this.ingestedAt,
   });
 
   /// The measured value (e.g. beats/min, kg).
@@ -44,6 +45,15 @@ class ScalarReading {
 
   /// Provenance, if parseable.
   final ReadingSource? source;
+
+  /// When Cairn wrote this datapoint to the cache — the OMH header's
+  /// `creation_date_time`, in local time — or `null` if the header lacked it.
+  ///
+  /// The read path uses this to resolve an in-place correction: among readings
+  /// that share a source and effective instant, the one ingested last wins, so
+  /// a fixed value (e.g. a re-typed manual weight) supersedes the stale one
+  /// without rewriting any append-only file (DESIGN.md §4.3).
+  final DateTime? ingestedAt;
 }
 
 /// A reading that spans an interval (step count over a minute, etc.).

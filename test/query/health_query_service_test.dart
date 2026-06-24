@@ -5,6 +5,7 @@ import 'package:cairn/src/health/health_sample.dart';
 import 'package:cairn/src/health/health_source.dart';
 import 'package:cairn/src/health/sleep_aggregator.dart';
 import 'package:cairn/src/omh/default_omh_mapper.dart';
+import 'package:cairn/src/omh/omh_time.dart';
 import 'package:cairn/src/query/health_query_service.dart';
 import 'package:cairn/src/storage/jsonl_omh_file_store.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -53,6 +54,32 @@ void main() {
       metric: metric,
       day: at,
       dataPoints: [mapper.toDataPoint(sample)],
+    );
+  }
+
+  // Writes a scalar whose OMH header `creation_date_time` (the ingest stamp the
+  // read path orders corrections by) is pinned to [ingestedAt].
+  Future<void> putScalarIngestedAt(
+    HealthMetric metric,
+    DateTime at,
+    double value,
+    String unit,
+    HealthSource source,
+    DateTime ingestedAt,
+  ) async {
+    final stamped = DefaultOmhMapper(clock: () => ingestedAt);
+    final sample = ScalarSample(
+      metric: metric,
+      start: at,
+      end: at,
+      value: value,
+      unit: unit,
+      source: source,
+    );
+    await store.append(
+      metric: metric,
+      day: at,
+      dataPoints: [stamped.toDataPoint(sample)],
     );
   }
 
@@ -145,6 +172,98 @@ void main() {
 
   test('latestScalar returns null when there is no data', () async {
     expect(await service.latestScalar(HealthMetric.weight), isNull);
+  });
+
+  test('a same-instant correction shows the latest-ingested value', () async {
+    final at = DateTime(2026, 6, 15, 8);
+    final scale = src('scale', method: RecordingMethodKind.manual);
+    // A typo fixed in the health app: the same instant + source is re-read and
+    // re-ingested a day later with the corrected value. Both lines are on disk
+    // (append-only); the read path must surface the later-ingested one.
+    await putScalarIngestedAt(
+      HealthMetric.weight,
+      at,
+      80,
+      'kg',
+      scale,
+      DateTime(2026, 6, 15, 8, 0, 1),
+    );
+    await putScalarIngestedAt(
+      HealthMetric.weight,
+      at,
+      78,
+      'kg',
+      scale,
+      DateTime(2026, 6, 16, 9),
+    );
+    expect((await service.latestScalar(HealthMetric.weight))?.value, 78);
+    final series = await service.scalarSeries(HealthMetric.weight, days: 30);
+    expect(series.map((r) => r.value).toList(), [78]);
+  });
+
+  // A body-weight datapoint whose header omits `creation_date_time`, to
+  // exercise the unknown-ingest-time tie-break.
+  Future<void> putWeightNoStamp(
+    DateTime at,
+    double value,
+    String source,
+  ) async {
+    await store.append(
+      metric: HealthMetric.weight,
+      day: at,
+      dataPoints: [
+        {
+          'header': {
+            'id': 'x',
+            'schema_id': {
+              'namespace': 'omh',
+              'name': 'body-weight',
+              'version': '2.0',
+            },
+            'acquisition_provenance': {
+              'source_name': source,
+              'modality': 'self-reported',
+            },
+          },
+          'body': {
+            'body_weight': {'value': value, 'unit': 'kg'},
+            'effective_time_frame': {'date_time': omhDateTime(at)},
+          },
+        },
+      ],
+    );
+  }
+
+  test('with no ingest stamp, the first-seen reading is kept', () async {
+    final at = DateTime(2026, 6, 15, 8);
+    // Neither datapoint carries creation_date_time, so an unknown ingest time
+    // never supersedes — the first-written reading is the one shown.
+    await putWeightNoStamp(at, 80, 'scale');
+    await putWeightNoStamp(at, 78, 'scale');
+    expect((await service.latestScalar(HealthMetric.weight))?.value, 80);
+  });
+
+  test('a same-instant reading from a different source is kept', () async {
+    final at = DateTime(2026, 6, 15, 8);
+    // Distinct sources are not a correction of each other — keep both.
+    await putScalarIngestedAt(
+      HealthMetric.weight,
+      at,
+      80,
+      'kg',
+      src('scaleA'),
+      DateTime(2026, 6, 15, 8, 0, 1),
+    );
+    await putScalarIngestedAt(
+      HealthMetric.weight,
+      at,
+      78,
+      'kg',
+      src('scaleB'),
+      DateTime(2026, 6, 16, 9),
+    );
+    final series = await service.scalarSeries(HealthMetric.weight, days: 30);
+    expect(series.map((r) => r.value).toList()..sort(), [78, 80]);
   });
 
   test('todayStepTotal dedups overlapping sources, then sums', () async {

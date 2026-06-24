@@ -68,8 +68,9 @@ final class OmhHealthQueryService implements HealthQueryService {
           .whereType<ScalarReading>()
           .toList();
       if (readings.isNotEmpty) {
-        readings.sort((a, b) => b.at.compareTo(a.at));
-        return readings.first;
+        final resolved = _latestWins(readings)
+          ..sort((a, b) => b.at.compareTo(a.at));
+        return resolved.first;
       }
     }
     return null;
@@ -131,8 +132,8 @@ final class OmhHealthQueryService implements HealthQueryService {
     // [today-(N-1), today] (matches dailyHeartRate / dailySteps).
     final from = to.subtract(Duration(days: days - 1));
     final maps = await store.readRange(metric: metric, from: from, to: to);
-    return maps.map(parseScalar).whereType<ScalarReading>().toList()
-      ..sort((a, b) => a.at.compareTo(b.at));
+    final readings = maps.map(parseScalar).whereType<ScalarReading>().toList();
+    return _latestWins(readings)..sort((a, b) => a.at.compareTo(b.at));
   }
 
   @override
@@ -165,10 +166,9 @@ final class OmhHealthQueryService implements HealthQueryService {
       from: from,
       to: to,
     );
+    final readings = maps.map(parseScalar).whereType<ScalarReading>().toList();
     final byDay = <DateTime, List<double>>{};
-    for (final map in maps) {
-      final reading = parseScalar(map);
-      if (reading == null) continue;
+    for (final reading in _latestWins(readings)) {
       (byDay[_dateOnly(reading.at)] ??= []).add(reading.value);
     }
     final stats = byDay.entries.map((entry) {
@@ -196,6 +196,44 @@ final class OmhHealthQueryService implements HealthQueryService {
     );
     return maps.map(parseWorkout).whereType<WorkoutReading>().toList()
       ..sort((a, b) => b.start.compareTo(a.start));
+  }
+
+  /// Collapses readings describing the **same measurement** — same source and
+  /// same effective instant — down to the one Cairn ingested most recently, so
+  /// an in-place correction in the health app (e.g. a re-typed manual weight)
+  /// supersedes the stale value on the read path without rewriting any
+  /// append-only file (DESIGN.md §4.3). Readings from different sources, or at
+  /// different instants, are all kept.
+  ///
+  /// Note: this resolves *value* corrections at an unchanged timestamp. Edits
+  /// that move the timestamp, and deletions, still need the Phase 8
+  /// change-token path (DESIGN.md §4, §15). Result order is unspecified —
+  /// callers sort.
+  List<ScalarReading> _latestWins(List<ScalarReading> readings) {
+    // Key on a `(name, second)` record — structural equality — not a delimited
+    // string, so a source name containing the delimiter can't collide two
+    // distinct measurements. Readings with no parseable source share the ''
+    // name and collapse by instant, which is acceptable: provenance is the only
+    // identity available, so two unattributed same-instant readings are treated
+    // as one (the later-ingested, or first-seen if neither is stamped).
+    final best = <(String, int), ScalarReading>{};
+    for (final r in readings) {
+      final key = (r.source?.name ?? '', _seconds(r.at));
+      final current = best[key];
+      if (current == null || _ingestedAfter(r, current)) best[key] = r;
+    }
+    return best.values.toList();
+  }
+
+  /// Whether [a] was ingested strictly after [b]. An unknown ingest time never
+  /// supersedes — a missing header field degrades to "keep what we already
+  /// have", so an undated reading never displaces a dated one (or another
+  /// undated one: the first seen is kept).
+  static bool _ingestedAfter(ScalarReading a, ScalarReading b) {
+    final ai = a.ingestedAt;
+    if (ai == null) return false;
+    final bi = b.ingestedAt;
+    return bi == null || ai.isAfter(bi);
   }
 
   /// Keeps the preferred source per `(start,end)` step interval before summing.

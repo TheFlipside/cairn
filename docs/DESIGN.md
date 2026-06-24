@@ -78,6 +78,7 @@ flowchart TD
 
 - **Provenance:** every reading carries a source (phone vs watch vs vendor app). Record it in the OMH `acquisition_provenance` block.
 - **Deduplication:** the same metric (e.g. steps) often arrives from multiple sources and double-counts. Apply a **source-priority policy per data type** (configurable; sensible defaults, e.g. prefer the wearable for heart rate). Dedup key: `(type, time-window, value, source)`.
+- **Correction resolution (read path):** an in-place edit in the source health app — the common case is a re-typed manual weight — is re-read within the trailing reconcile window and **appended** as a new datapoint; append-only forbids rewriting the original, so both versions coexist on disk. Readers resolve this with **last-ingested-wins**: among datapoints that share the same source *and* effective instant, the one with the latest `header.creation_date_time` is shown and the rest are shadowed (kept as an audit trail). This covers *value* corrections at an unchanged timestamp; edits that move the timestamp, and deletions, are not resolvable this way and wait on the change-token work below. **This is a property of the file format's read semantics, so every reader must apply it identically** — the mobile dashboard (path A) and the Nextcloud app (path B) alike — or the two frontends will disagree on the same files.
 - **Incremental sync:** with the `health` package this is **timestamp-window based** — track "last synced instant" per data type and query `[lastSync, now]`. Known limitation: this can miss *late-arriving or edited* historical records. For robust change tracking, the native APIs offer **Health Connect change tokens** and **HealthKit anchored object queries (`HKAnchoredObjectQuery`)**; reaching them requires a platform channel / native plugin. Decision: ship timestamp-window sync in v1, flag change-token sync as a v2 hardening task.
 
 ### 4.4 Background sync
@@ -187,7 +188,7 @@ Constraints to design onboarding around:
 
 **Read/display path A (mobile):** local OMH cache → parse → in-app dashboard.
 
-**Read/display path B (web):** Nextcloud app reads `/Cairn/` files server-side → aggregates → renders in Nextcloud UI.
+**Read/display path B (web):** Nextcloud app reads `/Cairn/` files server-side → applies the §4.3 last-ingested-wins correction resolution → aggregates → renders in Nextcloud UI.
 
 ---
 

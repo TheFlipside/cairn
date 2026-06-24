@@ -6,6 +6,19 @@ All notable changes to this project are documented in this file.
 
 ### Fixed
 
+- **Corrected health entries now reflect in the dashboard.** When a reading is
+  edited in the source health app (e.g. a mistyped manual weight is fixed), the
+  corrected value is re-read on the next sync and appended (append-only forbids
+  rewriting the original), but the read path previously showed whichever of the
+  two same-timestamp readings sorted first — often the stale one. The query
+  layer now resolves readings that share a source and effective instant by
+  **last-ingested-wins** (the OMH header's `creation_date_time`), so the
+  correction supersedes the stale value on the dashboard without any file
+  rewrite. Applies to weight and heart-rate read paths. Value corrections at an
+  unchanged timestamp are covered; timestamp edits and deletions still await the
+  Phase 8 change-token work. Documented as a shared read-rule both frontends
+  must apply (DESIGN.md §4.3).
+
 - **iOS HealthKit access never prompted** (found testing on an iPhone
   simulator): the app showed no Health permission sheet and was absent from
   Settings → Privacy → Health, because the HealthKit entitlement/capability
