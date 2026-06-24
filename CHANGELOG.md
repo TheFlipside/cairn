@@ -4,6 +4,26 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- **iOS HealthKit access never prompted** (found testing on an iPhone
+  simulator): the app showed no Health permission sheet and was absent from
+  Settings → Privacy → Health, because the HealthKit entitlement/capability
+  was never wired into the Xcode project — iOS silently drops the
+  authorisation request without it. Added `ios/Runner/Runner.entitlements`
+  (`com.apple.developer.healthkit`, read-only — no write/clinical scope) and
+  set `CODE_SIGN_ENTITLEMENTS` on the three app-target build configs. The Dart
+  request path and `NSHealthShareUsageDescription` were already correct.
+
+### Changed
+
+- **Pinned the iOS deployment target to 14.0 in source** so it no longer needs
+  a manual Xcode bump on each checkout. Set `IPHONEOS_DEPLOYMENT_TARGET` (the
+  project-level configs), `MinimumOSVersion` in `Flutter/AppFrameworkInfo.plist`,
+  and added a committed `ios/Podfile` (`platform :ios, '14.0'` plus a
+  `post_install` hook that enforces 14.0 on every pod, so a pod with a lower
+  declared target can't drag the floor back down).
+
 ## 0.1.3 — 2026-06-23
 
 Patch release: makes the source build cleanly on F-Droid's build server.

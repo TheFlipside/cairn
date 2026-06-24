@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- HealthKit capability. Required for any HealthKit access; without it iOS
+	     never shows the read-authorisation sheet and the app is not registered
+	     as a Health client (Settings > Privacy > Health). Cairn only reads
+	     (NSHealthShareUsageDescription in Info.plist); it never writes, so no
+	     NSHealthUpdateUsageDescription / write entitlement is needed. -->
+	<key>com.apple.developer.healthkit</key>
+	<true/>
+	<!-- Clinical health records access. Cairn reads only standard HealthKit
+	     sample data, so this stays empty (matches Xcode's default). -->
+	<key>com.apple.developer.healthkit.access</key>
+	<array/>
+</dict>
+</plist>
