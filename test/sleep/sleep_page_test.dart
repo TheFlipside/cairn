@@ -140,6 +140,36 @@ void main() {
     });
   });
 
+  testWidgets('hypnogram tooltip names the stage and its clock span', (
+    tester,
+  ) async {
+    await tester.pumpWidget(app([_sampleNight()]));
+    await tester.pumpAndSettle();
+
+    final chart = tester.widget<LineChart>(find.byType(LineChart));
+    expect(chart.data.lineTouchData.enabled, isTrue);
+
+    final l10n = AppLocalizations.of(tester.element(find.byType(LineChart)));
+    final bars = chart.data.lineBarsData;
+    final tooltip = chart.data.lineTouchData.touchTooltipData;
+
+    // The first bar is the deep segment (23:00–01:00): its tooltip names the
+    // stage and shows both clock times.
+    final items = tooltip.getTooltipItems([
+      LineBarSpot(bars.first, 0, bars.first.spots.first),
+    ]);
+    expect(items, hasLength(1));
+    expect(items.first!.text, contains(stageLabel(l10n, SleepStage.deep)));
+    expect(items.first!.text, contains(':')); // a formatted clock time
+
+    // Two touches on the same bar collapse to a single tooltip line.
+    final deduped = tooltip.getTooltipItems([
+      LineBarSpot(bars.first, 0, bars.first.spots.first),
+      LineBarSpot(bars.first, 0, bars.first.spots.last),
+    ]);
+    expect(deduped[1], isNull);
+  });
+
   testWidgets('reloads when the data revision changes', (tester) async {
     final query = _FakeQuery([]);
     final revision = ValueNotifier<int>(0);

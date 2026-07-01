@@ -19,6 +19,13 @@ class HypnogramChart extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    final materialL10n = MaterialLocalizations.of(context);
+    final use24h = MediaQuery.of(context).alwaysUse24HourFormat;
+    String clock(DateTime t) => materialL10n.formatTimeOfDay(
+      TimeOfDay.fromDateTime(t),
+      alwaysUse24HourFormat: use24h,
+    );
+
     // One coloured horizontal bar per stage segment — no connecting line — so
     // each phase stands out by colour and depth instead of a single stepped
     // line weaving through the middle "Light" band. Colours match the donut.
@@ -31,7 +38,7 @@ class HypnogramChart extends StatelessWidget {
       final y = stageDepth(segment.stage);
       bars.add(
         LineChartBarData(
-          spots: [FlSpot(x0, y), FlSpot(x1, y)],
+          spots: _segmentSpots(x0, x1, y),
           color: stageColor(segment.stage),
           barWidth: 14,
           isStrokeCapRound: true,
@@ -45,6 +52,12 @@ class HypnogramChart extends StatelessWidget {
     if (bars.isEmpty || maxX <= 0) {
       return _Placeholder(text: l10n.sleepNoStageDetail, theme: theme);
     }
+
+    final tooltipStyle = (theme.textTheme.bodySmall ?? const TextStyle())
+        .copyWith(
+          color: theme.colorScheme.onInverseSurface,
+          fontWeight: FontWeight.w600,
+        );
 
     return SizedBox(
       height: 180,
@@ -76,12 +89,53 @@ class HypnogramChart extends StatelessWidget {
               ),
             ),
           ),
-          lineTouchData: const LineTouchData(enabled: false),
+          lineTouchData: LineTouchData(
+            touchTooltipData: LineTouchTooltipData(
+              getTooltipColor: (_) => theme.colorScheme.inverseSurface,
+              // Tap a bar to see its stage and the clock time it spanned. Bars
+              // map 1:1 to night.stages by index; show one line per bar so a
+              // tap near a transition doesn't stack duplicate entries.
+              getTooltipItems: (touchedSpots) {
+                final shown = <int>{};
+                return touchedSpots.map((spot) {
+                  if (!shown.add(spot.barIndex)) return null;
+                  final segment = night.stages[spot.barIndex];
+                  return LineTooltipItem(
+                    '${stageLabel(l10n, segment.stage)}\n'
+                    '${clock(segment.start)} – ${clock(segment.end)}',
+                    tooltipStyle,
+                  );
+                }).toList();
+              },
+            ),
+            // A thin time-marker at the touch, no dot.
+            getTouchedSpotIndicator: (barData, indexes) => [
+              for (final _ in indexes)
+                TouchedSpotIndicatorData(
+                  FlLine(color: theme.colorScheme.outline, strokeWidth: 1),
+                  const FlDotData(show: false),
+                ),
+            ],
+          ),
           lineBarsData: bars,
         ),
       ),
     );
   }
+}
+
+/// Spots for one flat stage bar at depth [y], sampled every few minutes across
+/// `[x0, x1]` rather than just the two ends. fl_chart's line touch snaps to the
+/// nearest spot, so endpoints alone would leave the middle of a long bar
+/// untappable; the intermediate spots make a tap anywhere on the bar register.
+List<FlSpot> _segmentSpots(double x0, double x1, double y) {
+  const stepMinutes = 10.0;
+  final spots = <FlSpot>[FlSpot(x0, y)];
+  for (var x = x0 + stepMinutes; x < x1; x += stepMinutes) {
+    spots.add(FlSpot(x, y));
+  }
+  spots.add(FlSpot(x1, y));
+  return spots;
 }
 
 class _Placeholder extends StatelessWidget {

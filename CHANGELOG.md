@@ -35,7 +35,7 @@ All notable changes to this project are documented in this file.
   middle "Light" band made the night look noisy and left every phase the same
   colour. It now draws one coloured bar per stage segment — colours matching the
   "Where the night went" donut — so deep / light / REM / awake stand apart at a
-  glance.
+  glance. Tapping a bar shows that phase and the clock time it spanned.
 
 - **Pinned the iOS deployment target to 14.0 in source** so it no longer needs
   a manual Xcode bump on each checkout. Set `IPHONEOS_DEPLOYMENT_TARGET` (the
