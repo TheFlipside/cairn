@@ -62,8 +62,13 @@ dart format --output=none --set-exit-if-changed .   # CI format gate
 - **Files are the single source of truth.** The OMH / IEEE 1752.1 JSON-Lines
   files in the user's Nextcloud are authoritative. Never introduce a central
   server or database as the system of record.
-- **Append-only, never rewrite.** One `.jsonl` per metric per day; writes are
-  line appends. Rewriting a growing file invites Nextcloud conflict copies.
+- **Append-only, with one sanctioned rewrite.** One `.jsonl` per metric per
+  day; writes are line appends — rewriting a growing file invites Nextcloud
+  conflict copies. The lone exception is **supersession compaction**: when a
+  re-read supersedes an on-disk line for the same schema + source + time-frame
+  (a cumulative daily total that grew, or a correction), the shard is compacted
+  atomically (temp + rename) to drop the stale line. Deterministic, so two
+  devices converge. See `DESIGN.md` §5.3.
 - **Read-only on the OS health store.** Cairn *reads* HealthKit / Health Connect;
   it never writes back. Handle partial permission grants per-type. iOS hides
   HealthKit read-auth status — design around *data presence*, not a permission

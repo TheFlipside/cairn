@@ -54,6 +54,29 @@ final class JsonlOmhFileStore implements OmhFileStore {
   }
 
   @override
+  Future<void> replaceDay({
+    required HealthMetric metric,
+    required DateTime day,
+    required List<Map<String, Object?>> dataPoints,
+  }) async {
+    final file = _shardFile(metric, day);
+    if (dataPoints.isEmpty) {
+      // Nothing left for the day → remove the shard rather than leave an empty
+      // file that would still sync.
+      if (file.existsSync()) await file.delete();
+      return;
+    }
+    await file.parent.create(recursive: true);
+    // Atomic temp + rename, like the manifest, so a crash can't leave the shard
+    // truncated (a partial append would only lose the trailing line; a partial
+    // rewrite could lose the whole day).
+    final tmp = File('${file.path}.tmp');
+    final lines = dataPoints.map(jsonEncode).join('\n');
+    await tmp.writeAsString('$lines\n', flush: true);
+    await tmp.rename(file.path);
+  }
+
+  @override
   Future<List<Map<String, Object?>>> readRange({
     required HealthMetric metric,
     required DateTime from,
@@ -81,6 +104,30 @@ final class JsonlOmhFileStore implements OmhFileStore {
       return compute(_parseJsonl, content);
     }
     return _parseJsonl(content);
+  }
+
+  @override
+  Future<bool> isShardIntact({
+    required HealthMetric metric,
+    required DateTime day,
+  }) async {
+    final file = _shardFile(metric, day);
+    if (!file.existsSync()) return true; // nothing on disk → nothing to lose
+    final String content;
+    try {
+      content = await file.readAsString();
+    } on FileSystemException {
+      return true; // vanished between the check and the read → treat as intact
+    }
+    for (final line in const LineSplitter().convert(content)) {
+      if (line.trim().isEmpty) continue;
+      try {
+        if (jsonDecode(line) is! Map<String, dynamic>) return false;
+      } on FormatException {
+        return false; // a line [readRange] would skip → a rewrite would erase
+      }
+    }
+    return true;
   }
 
   @override

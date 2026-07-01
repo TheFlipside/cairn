@@ -57,6 +57,21 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 
+- **Ingest compacts re-reported cumulative totals instead of piling them up.**
+  A source that re-reports a running total in a fixed window (Samsung Health's
+  whole-day step record) previously appended a fresh snapshot on every refresh,
+  bloating the day's shard with near-duplicate lines. Ingest now recognises a
+  **supersession** — a re-read whose value changed but whose schema + source +
+  time-frame match a line already on disk — and compacts the shard (drops the
+  stale line, rewrites atomically) so each `(source, window)` keeps a single
+  current record. This is the one sanctioned exception to append-only; it fires
+  only on an actual supersession (a plain append otherwise) and is deterministic
+  so multiple devices converge. Pre-existing snapshot pile-ups collapse on the
+  next refresh that brings a new value. To protect the "files are the source of
+  truth" invariant, compaction **refuses to rewrite a shard that holds an
+  unparseable line** (a torn append from a crash), falling back to a plain
+  append so such a line is never silently dropped (DESIGN.md §4.3, §5.3).
+
 - **Redesigned the sleep-stage hypnogram.** The "Stages through the night"
   chart was a single-colour stepped line whose vertical transitions through the
   middle "Light" band made the night look noisy and left every phase the same

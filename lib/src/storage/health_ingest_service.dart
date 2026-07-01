@@ -38,6 +38,14 @@ class IngestResult {
 /// + provenance + body, ignoring its random header `id`/`creation_date_time`
 /// (which differ on every re-ingest) — is not written again, so the reconcile
 /// overlap never duplicates data.
+///
+/// A re-read whose *value* changed but whose schema + source + time-frame match
+/// an existing line is a **supersession** — a cumulative daily total that grew
+/// (e.g. Samsung Health reports the day's steps as one whole-day record that
+/// climbs) or an in-place correction. Rather than pile up snapshots, the day's
+/// shard is compacted: the stale lines are dropped and the shard rewritten
+/// atomically (the one sanctioned exception to append-only — DESIGN.md §5.3).
+/// A run that supersedes nothing still takes the plain-append fast path.
 final class HealthIngestService {
   /// Creates an ingest service. [mapper], [aggregator], [clock],
   /// [initialLookback] and [reconcileLookback] are injectable for tests.
@@ -129,20 +137,54 @@ final class HealthIngestService {
 
     var count = 0;
     for (final entry in byDay.entries) {
-      // Idempotent append: skip datapoints already on disk for this day so the
-      // reconcile-window overlap doesn't duplicate (DESIGN.md §4.3).
       final existing = await store.readRange(
         metric: metric,
         from: entry.key,
         to: entry.key,
       );
-      final seen = {for (final dp in existing) _contentKey(dp)};
-      final fresh = <Map<String, Object?>>[];
+      // Drop exact re-reads (idempotent — the reconcile-window overlap re-reads
+      // unchanged data), and collapse the batch to one record per supersede-key
+      // so a single run can't write two conflicting values for one window.
+      final seenContent = {for (final dp in existing) _contentKey(dp)};
+      final freshByKey = <String, Map<String, Object?>>{};
       for (final dataPoint in entry.value) {
-        if (seen.add(_contentKey(dataPoint))) fresh.add(dataPoint);
+        if (!seenContent.add(_contentKey(dataPoint))) continue;
+        freshByKey[_supersedeKey(dataPoint)] = dataPoint;
       }
-      if (fresh.isEmpty) continue;
-      await store.append(metric: metric, day: entry.key, dataPoints: fresh);
+      if (freshByKey.isEmpty) continue;
+      final fresh = freshByKey.values.toList();
+
+      // A fresh record supersedes any on-disk record with the same schema,
+      // source and time-frame — the same logical measurement re-reported with a
+      // new value (a cumulative daily total that grew, or a correction). The
+      // fresh record is newer *by construction* (this run reads after the
+      // last), so it wins. Single-writer-safe only: it assumes this device is
+      // the sole writer of the shard. Cross-device recency can't be told from
+      // the health store's data (Samsung's `source_creation_date_time` is just
+      // the day key), so recency-aware merge waits on the Phase 8 sync work
+      // (DESIGN.md §5.3). If a fresh record supersedes anything, rewrite the
+      // shard without the stale lines; otherwise a plain append keeps the
+      // append-only fast path (DESIGN.md §4.3, §5.3).
+      final freshKeys = freshByKey.keys.toSet();
+      final kept = existing
+          .where((dp) => !freshKeys.contains(_supersedeKey(dp)))
+          .toList();
+      // Never rewrite a shard holding a line readRange couldn't parse (a torn
+      // append): the rewrite builds from the parsed lines alone and would erase
+      // it. Fall back to a plain append — the stale snapshots linger for this
+      // shard, but nothing is lost and the read path still shows the latest.
+      final compacts =
+          kept.length != existing.length &&
+          await store.isShardIntact(metric: metric, day: entry.key);
+      if (compacts) {
+        await store.replaceDay(
+          metric: metric,
+          day: entry.key,
+          dataPoints: [...kept, ...fresh],
+        );
+      } else {
+        await store.append(metric: metric, day: entry.key, dataPoints: fresh);
+      }
       count += fresh.length;
     }
     return count;
@@ -169,5 +211,36 @@ String _contentKey(Map<String, Object?> dataPoint) {
     'schema': headerMap['schema_id'],
     'provenance': headerMap['acquisition_provenance'],
     'body': dataPoint['body'],
+  });
+}
+
+/// A coarser identity than [_contentKey] that ignores the datapoint's *value*:
+/// its schema, source, and effective time-frame. Two datapoints sharing this
+/// key are the **same logical measurement** re-reported with a new value — a
+/// cumulative total that grew (Samsung Health reports the day's steps as one
+/// whole-day record that climbs), or an in-place correction. The later one
+/// supersedes the earlier, so the shard is compacted to keep just it (the
+/// write-side of the read path's last-ingested-wins, DESIGN.md §4.3).
+///
+/// `source_name` (not the whole provenance) keys the source, matching the read
+/// path — a re-reported total keeps the same source but its `modality` /
+/// `source_creation_date_time` could differ, and those must not split the key.
+String _supersedeKey(Map<String, Object?> dataPoint) {
+  final header = dataPoint['header'];
+  final headerMap = header is Map<String, Object?>
+      ? header
+      : const <String, Object?>{};
+  final provenance = headerMap['acquisition_provenance'];
+  final provMap = provenance is Map<String, Object?>
+      ? provenance
+      : const <String, Object?>{};
+  final body = dataPoint['body'];
+  final bodyMap = body is Map<String, Object?>
+      ? body
+      : const <String, Object?>{};
+  return jsonEncode({
+    'schema': headerMap['schema_id'],
+    'source': provMap['source_name'],
+    'frame': bodyMap['effective_time_frame'],
   });
 }

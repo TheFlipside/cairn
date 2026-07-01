@@ -306,4 +306,128 @@ void main() {
     );
     expect(onDisk, hasLength(1));
   });
+
+  test('a cumulative daily total is compacted, not accumulated', () async {
+    // Samsung Health reports the day's steps as one whole-day record whose
+    // value grows through the day; each refresh reads the current total.
+    final dayStart = DateTime(2026, 6, 14);
+    final dayEnd = DateTime(2026, 6, 14, 23, 59, 59);
+    final repo = _FakeRepository({HealthMetric.steps: []});
+
+    Future<void> ingestTotal(double value, DateTime at) async {
+      repo.samples[HealthMetric.steps] = [
+        ScalarSample(
+          metric: HealthMetric.steps,
+          value: value,
+          unit: 'steps',
+          start: dayStart,
+          end: dayEnd,
+          source: source,
+        ),
+      ];
+      await HealthIngestService(
+        repository: repo,
+        store: store,
+        clock: () => at,
+      ).ingest({HealthMetric.steps});
+    }
+
+    await ingestTotal(14, DateTime(2026, 6, 14, 6));
+    await ingestTotal(5034, DateTime(2026, 6, 14, 9));
+    await ingestTotal(7050, DateTime(2026, 6, 14, 14));
+
+    final onDisk = await store.readRange(
+      metric: HealthMetric.steps,
+      from: dayStart,
+      to: dayEnd,
+    );
+    // The same whole-day window collapses to a single, current record.
+    expect(onDisk, hasLength(1));
+    final body = asMap(onDisk.single['body']);
+    expect(asMap(body['step_count'])['value'], 7050.0);
+  });
+
+  test('distinct step windows are not compacted together', () async {
+    // A source that writes per-interval deltas (distinct windows) must keep
+    // every record — only same-window re-reports collapse.
+    final t0 = DateTime(2026, 6, 14, 6);
+    final t1 = t0.add(const Duration(minutes: 1));
+    final t2 = t1.add(const Duration(minutes: 1));
+    final repo = _FakeRepository({
+      HealthMetric.steps: [
+        ScalarSample(
+          metric: HealthMetric.steps,
+          value: 50,
+          unit: 'steps',
+          start: t0,
+          end: t1,
+          source: source,
+        ),
+        ScalarSample(
+          metric: HealthMetric.steps,
+          value: 60,
+          unit: 'steps',
+          start: t1,
+          end: t2,
+          source: source,
+        ),
+      ],
+    });
+    await HealthIngestService(
+      repository: repo,
+      store: store,
+      clock: () => DateTime(2026, 6, 14, 12),
+    ).ingest({HealthMetric.steps});
+
+    final onDisk = await store.readRange(
+      metric: HealthMetric.steps,
+      from: t0,
+      to: DateTime(2026, 6, 14, 12),
+    );
+    expect(onDisk, hasLength(2));
+  });
+
+  test('a malformed shard line blocks compaction (no data loss)', () async {
+    final dayStart = DateTime(2026, 6, 14);
+    final dayEnd = DateTime(2026, 6, 14, 23, 59, 59);
+
+    Future<void> ingestTotal(double value, DateTime at) async {
+      final repo = _FakeRepository({
+        HealthMetric.steps: [
+          ScalarSample(
+            metric: HealthMetric.steps,
+            value: value,
+            unit: 'steps',
+            start: dayStart,
+            end: dayEnd,
+            source: source,
+          ),
+        ],
+      });
+      await HealthIngestService(
+        repository: repo,
+        store: store,
+        clock: () => at,
+      ).ingest({HealthMetric.steps});
+    }
+
+    await ingestTotal(14, DateTime(2026, 6, 14, 6));
+
+    // Simulate a torn append (a crash mid-write) leaving a malformed line.
+    final shard = File('${tempRoot.path}/steps/2026/2026-06-14.jsonl')
+      ..writeAsStringSync('{"torn":\n', mode: FileMode.append);
+
+    // A new total supersedes 14, but the malformed line must block the rewrite,
+    // so the shard is appended to (not compacted) and the torn line survives.
+    await ingestTotal(7050, DateTime(2026, 6, 14, 14));
+
+    expect(shard.readAsStringSync(), contains('{"torn":'));
+    final values = (await store.readRange(
+      metric: HealthMetric.steps,
+      from: dayStart,
+      to: dayEnd,
+    )).map((dp) => asMap(asMap(dp['body'])['step_count'])['value']).toSet();
+    // Compaction skipped: 14 was NOT dropped, and 7050 was appended.
+    expect(values, containsAll(<double>[14, 7050]));
+  });
 }

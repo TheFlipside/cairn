@@ -16,6 +16,20 @@ abstract interface class OmhFileStore {
     required List<Map<String, Object?>> dataPoints,
   });
 
+  /// Atomically replaces the whole shard for [metric] on [day] with exactly
+  /// [dataPoints] (temp file + rename); an empty list removes the shard.
+  ///
+  /// Shards are otherwise append-only (DESIGN.md §5.3). This is the one
+  /// sanctioned rewrite: compacting a shard when a re-reported record
+  /// supersedes an earlier one for the same source and time-frame (a cumulative
+  /// total or a correction — the write-side of the §4.3 last-ingested-wins
+  /// rule). Ordinary writes use [append].
+  Future<void> replaceDay({
+    required HealthMetric metric,
+    required DateTime day,
+    required List<Map<String, Object?>> dataPoints,
+  });
+
   /// Reads every datapoint stored for [metric] whose day falls within the
   /// inclusive calendar-date range `[from, to]`. Only the local-date
   /// components of [from] and [to] are significant.
@@ -23,6 +37,16 @@ abstract interface class OmhFileStore {
     required HealthMetric metric,
     required DateTime from,
     required DateTime to,
+  });
+
+  /// Whether the shard for [metric] on [day] parses cleanly — every non-empty
+  /// physical line is valid JSON. A missing shard counts as intact (nothing to
+  /// lose). [readRange] silently skips a malformed line (e.g. a torn append
+  /// from a crash), so callers that would **rewrite** the shard must consult
+  /// this first: rewriting from the parsed lines alone would erase that line.
+  Future<bool> isShardIntact({
+    required HealthMetric metric,
+    required DateTime day,
   });
 
   /// Returns the last-synced anchor recorded in `manifest.json` for [metric],

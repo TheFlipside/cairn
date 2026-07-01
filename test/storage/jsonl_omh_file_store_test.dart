@@ -117,4 +117,46 @@ void main() {
     expect(await store.lastSyncAnchor(HealthMetric.steps), isNotNull);
     expect(await store.lastSyncAnchor(HealthMetric.weight), isNotNull);
   });
+
+  test('replaceDay atomically rewrites the shard', () async {
+    await store.append(
+      metric: HealthMetric.steps,
+      day: day,
+      dataPoints: [dp('a'), dp('b')],
+    );
+    await store.replaceDay(
+      metric: HealthMetric.steps,
+      day: day,
+      dataPoints: [dp('c')],
+    );
+    final read = await store.readRange(
+      metric: HealthMetric.steps,
+      from: day,
+      to: day,
+    );
+    expect(read, hasLength(1));
+    expect(asMap(read.single['header'])['id'], 'c');
+    // Atomic: no temp file left behind.
+    final shard = File(
+      p.join(tempRoot.path, 'steps', '2026', '2026-06-14.jsonl'),
+    );
+    expect(File('${shard.path}.tmp').existsSync(), isFalse);
+  });
+
+  test('replaceDay with an empty list removes the shard', () async {
+    await store.append(
+      metric: HealthMetric.steps,
+      day: day,
+      dataPoints: [dp('a')],
+    );
+    await store.replaceDay(
+      metric: HealthMetric.steps,
+      day: day,
+      dataPoints: const [],
+    );
+    final shard = File(
+      p.join(tempRoot.path, 'steps', '2026', '2026-06-14.jsonl'),
+    );
+    expect(shard.existsSync(), isFalse);
+  });
 }
