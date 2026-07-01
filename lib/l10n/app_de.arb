@@ -37,6 +37,8 @@
   "sleepEmptyBody": "Erfasse eine Nacht mit einem Wearable oder deiner Gesundheits-App und aktualisiere dann.",
   "sleepHowToSetUp": "Einrichtung anzeigen",
   "sleepLastNight": "Letzte Nacht",
+  "sleepOlderNight": "Frühere Nacht",
+  "sleepNewerNight": "Spätere Nacht",
   "sleepMultipleSources": "Mehrere Quellen haben diese Nacht erfasst; die Summen können sich überschneiden.",
   "sleepStagesSection": "Phasen im Verlauf der Nacht",
   "sleepBreakdownSection": "Verteilung der Schlafphasen",

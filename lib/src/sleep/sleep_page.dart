@@ -39,6 +39,10 @@ class SleepPage extends StatefulWidget {
 class _SleepPageState extends State<SleepPage> {
   late Future<List<NightSleep>> _nights;
 
+  /// Index into the loaded nights (most-recent-first) for the detail panels;
+  /// 0 is last night. The prev/next controls move it; a data reload resets it.
+  int _selected = 0;
+
   @override
   void initState() {
     super.initState();
@@ -56,6 +60,8 @@ class _SleepPageState extends State<SleepPage> {
     if (!mounted) return;
     setState(() {
       _nights = widget.query.lastNNights(_trendNights);
+      // New data → jump back to the most recent night.
+      _selected = 0;
     });
   }
 
@@ -121,21 +127,41 @@ class _SleepPageState extends State<SleepPage> {
   }
 
   Widget _content(BuildContext context, List<NightSleep> nights) {
-    final last = nights.first;
     final theme = Theme.of(context);
     final l10n = AppLocalizations.of(context);
+    // build() routes an empty list to _empty, so nights is non-empty here, and
+    // _reload resets _selected with the new data — this clamp is defence in
+    // depth against an out-of-range selection, never a real transient.
+    final index = _selected.clamp(0, nights.length - 1);
+    final selected = nights[index];
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
-        Text(l10n.sleepLastNight, style: theme.textTheme.titleLarge),
+        _NightNavigator(
+          // nights is most-recent-first, so a higher index is further back:
+          // "older" steps forward in the list, "newer" steps back toward 0.
+          title: index == 0
+              ? l10n.sleepLastNight
+              : MaterialLocalizations.of(context).formatMediumDate(
+                  selected.night,
+                ),
+          onOlder: index < nights.length - 1
+              ? () => setState(() => _selected = index + 1)
+              : null,
+          onNewer: index > 0
+              ? () => setState(() => _selected = index - 1)
+              : null,
+          theme: theme,
+          l10n: l10n,
+        ),
         const SizedBox(height: 4),
         Text(
-          _dateLabel(last),
+          _dateLabel(selected),
           style: theme.textTheme.bodySmall,
         ),
         const SizedBox(height: 12),
-        SleepSummaryTiles(night: last),
-        if (last.sources.length > 1)
+        SleepSummaryTiles(night: selected),
+        if (selected.sources.length > 1)
           Padding(
             padding: const EdgeInsets.only(top: 8),
             child: Text(
@@ -145,10 +171,10 @@ class _SleepPageState extends State<SleepPage> {
           ),
         const SizedBox(height: 24),
         _SectionTitle(l10n.sleepStagesSection, theme),
-        HypnogramChart(night: last),
+        HypnogramChart(night: selected),
         const SizedBox(height: 24),
         _SectionTitle(l10n.sleepBreakdownSection, theme),
-        StageBreakdown(night: last),
+        StageBreakdown(night: selected),
         const SizedBox(height: 24),
         _SectionTitle(l10n.sleepTrendSection(_trendNights), theme),
         SleepTrendChart(nights: nights),
@@ -180,5 +206,43 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(bottom: 8),
     child: Text(text, style: theme.textTheme.titleMedium),
+  );
+}
+
+/// Header for the sleep deep-dive: the selected night's [title] flanked by
+/// step-back / step-forward controls. A `null` callback disables its button
+/// (at the ends of the available range).
+class _NightNavigator extends StatelessWidget {
+  const _NightNavigator({
+    required this.title,
+    required this.onOlder,
+    required this.onNewer,
+    required this.theme,
+    required this.l10n,
+  });
+
+  final String title;
+  final VoidCallback? onOlder;
+  final VoidCallback? onNewer;
+  final ThemeData theme;
+  final AppLocalizations l10n;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(
+        child: Text(title, style: theme.textTheme.titleLarge),
+      ),
+      IconButton(
+        icon: const Icon(Icons.chevron_left),
+        tooltip: l10n.sleepOlderNight,
+        onPressed: onOlder,
+      ),
+      IconButton(
+        icon: const Icon(Icons.chevron_right),
+        tooltip: l10n.sleepNewerNight,
+        onPressed: onNewer,
+      ),
+    ],
   );
 }

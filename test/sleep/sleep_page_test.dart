@@ -47,27 +47,27 @@ class _FakeQuery implements HealthQueryService {
       const [];
 }
 
-NightSleep _sampleNight() {
-  final base = DateTime(2026, 6, 15, 23);
+NightSleep _sampleNight([DateTime? base]) {
+  final start = base ?? DateTime(2026, 6, 15, 23);
   return NightSleep(
-    night: DateTime(2026, 6, 15),
-    start: base,
-    end: base.add(const Duration(hours: 6)),
+    night: DateTime(start.year, start.month, start.day),
+    start: start,
+    end: start.add(const Duration(hours: 6)),
     stages: [
       SleepStageReading(
         stage: SleepStage.deep,
-        start: base,
-        end: base.add(const Duration(hours: 2)),
+        start: start,
+        end: start.add(const Duration(hours: 2)),
       ),
       SleepStageReading(
         stage: SleepStage.awake,
-        start: base.add(const Duration(hours: 2)),
-        end: base.add(const Duration(hours: 3)),
+        start: start.add(const Duration(hours: 2)),
+        end: start.add(const Duration(hours: 3)),
       ),
       SleepStageReading(
         stage: SleepStage.light,
-        start: base.add(const Duration(hours: 3)),
-        end: base.add(const Duration(hours: 6)),
+        start: start.add(const Duration(hours: 3)),
+        end: start.add(const Duration(hours: 6)),
       ),
     ],
     totalSleep: const Duration(hours: 5),
@@ -168,6 +168,34 @@ void main() {
       LineBarSpot(bars.first, 0, bars.first.spots.last),
     ]);
     expect(deduped[1], isNull);
+  });
+
+  testWidgets('pages from last night back to an earlier night', (tester) async {
+    await tester.pumpWidget(
+      app([
+        _sampleNight(), // newest: night of 2026-06-15
+        _sampleNight(DateTime(2026, 6, 14, 23)), // older: 2026-06-14
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    final olderButton = find.widgetWithIcon(IconButton, Icons.chevron_left);
+    final newerButton = find.widgetWithIcon(IconButton, Icons.chevron_right);
+
+    // Starts on the most recent night: title is "Last night" and the
+    // step-forward (newer) control is disabled.
+    expect(find.text('Last night'), findsOneWidget);
+    expect(find.textContaining('2026-06-15'), findsWidgets);
+    expect(tester.widget<IconButton>(newerButton).onPressed, isNull);
+
+    // Step back to the earlier night.
+    await tester.tap(olderButton);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Last night'), findsNothing);
+    expect(find.textContaining('2026-06-14'), findsWidgets);
+    // Now the step-back (older) control is disabled at the end of the range.
+    expect(tester.widget<IconButton>(olderButton).onPressed, isNull);
   });
 
   testWidgets('reloads when the data revision changes', (tester) async {

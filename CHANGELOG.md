@@ -4,6 +4,14 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+### Added
+
+- **Browse past nights in the Sleep screen.** The deep-dive was fixed to last
+  night; a prev/next control in the header now steps through the loaded nights
+  (the same seven the trend chart already covers), re-pointing the hypnogram,
+  stage breakdown and headline numbers at the selected night. No extra query —
+  those nights were already loaded. A data refresh returns to the latest night.
+
 ### Fixed
 
 - **Corrected health entries now reflect in the dashboard.** When a reading is
