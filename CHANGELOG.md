@@ -11,6 +11,8 @@ All notable changes to this project are documented in this file.
   (the same seven the trend chart already covers), re-pointing the hypnogram,
   stage breakdown and headline numbers at the selected night. No extra query —
   those nights were already loaded. A data refresh returns to the latest night.
+  You can also **tap a night's column in the trend chart** to jump straight to
+  it; the selected night's bar is highlighted and the rest are dimmed.
 
 ### Fixed
 

@@ -177,7 +177,14 @@ class _SleepPageState extends State<SleepPage> {
         StageBreakdown(night: selected),
         const SizedBox(height: 24),
         _SectionTitle(l10n.sleepTrendSection(_trendNights), theme),
-        SleepTrendChart(nights: nights),
+        SleepTrendChart(
+          nights: nights,
+          selected: selected,
+          onSelect: (night) {
+            final i = nights.indexWhere((n) => n.night == night.night);
+            if (i >= 0) setState(() => _selected = i);
+          },
+        ),
         const SizedBox(height: 24),
       ],
     );

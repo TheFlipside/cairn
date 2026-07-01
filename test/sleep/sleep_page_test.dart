@@ -198,6 +198,43 @@ void main() {
     expect(tester.widget<IconButton>(olderButton).onPressed, isNull);
   });
 
+  testWidgets('tapping a trend bar selects that night', (tester) async {
+    // A tall viewport so the whole page (incl. the trend) is on-screen and the
+    // tap target isn't scrolled out from under the tap.
+    tester.view.physicalSize = const Size(1200, 2600);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+
+    await tester.pumpWidget(
+      app([
+        _sampleNight(), // newest: 2026-06-15
+        _sampleNight(DateTime(2026, 6, 14, 23)), // older: 2026-06-14
+      ]),
+    );
+    await tester.pumpAndSettle();
+
+    // Detail starts on the newest night.
+    expect(find.text('Last night'), findsOneWidget);
+
+    // Trend is ordered oldest→newest, so index 0 is the 14th (leftmost column).
+    await tester.tap(find.byKey(const ValueKey('sleepTrendTap-0')));
+    await tester.pumpAndSettle();
+
+    // The detail panels switched to the tapped (earlier) night.
+    expect(find.text('Last night'), findsNothing);
+    expect(find.textContaining('2026-06-14'), findsWidgets);
+
+    // …and the highlight moved to that bar: full-strength colour on the 14th,
+    // dimmed on the 15th.
+    final chart = tester.widget<BarChart>(find.byType(BarChart));
+    final colours = chart.data.barGroups
+        .map((g) => g.barRods.first.color!)
+        .toList();
+    expect(colours[0].a, 1.0); // 14th (now selected)
+    expect(colours[1].a, lessThan(1.0)); // 15th (dimmed)
+  });
+
   testWidgets('reloads when the data revision changes', (tester) async {
     final query = _FakeQuery([]);
     final revision = ValueNotifier<int>(0);
