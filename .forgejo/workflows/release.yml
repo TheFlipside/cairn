@@ -202,12 +202,34 @@ jobs:
           export PUB_CACHE="$BUILD_DIR/.pub-cache"
           flutter pub get --enforce-lockfile
 
+      - name: Check formatting
+        # ci.yml gates this too, but only on branch pushes — it never fires on a
+        # tag. A commit tagged without first landing on a branch, or tagged
+        # before its branch run finishes, would otherwise reach a release with
+        # no format check at all. Source-only, so it cannot move the APK bytes.
+        #
+        # Keep this and the step below ahead of "Configure signing": failing
+        # here stops the job before the keystore is ever decoded to disk. That
+        # ordering is the whole reason a failed gate leaves nothing to clean up.
+        run: |
+          set -euo pipefail
+          cd "$BUILD_DIR"
+          dart format --output=none --set-exit-if-changed .
+
       - name: Analyze and test
         # Same pin as ci.yml: the parity fixtures (test/fixtures/parity/) are
         # authored in Europe/Berlin, and Dart reads its zone from the
         # environment, so a runner in any other zone buckets the readings into
         # the wrong days. The suite asserts the offsets itself and fails with
         # the fix in its message.
+        #
+        # The two flags match ci.yml. Bare `dart analyze` exits 0 on
+        # info-severity diagnostics, and most very_good_analysis rules are
+        # info-severity, so a release could ship what CI would have rejected.
+        # `--no-pub` stops `flutter test` from running an implicit resolution
+        # that would not carry the `--enforce-lockfile` the Dependencies step
+        # above uses — on the workflow that builds the reference binary, the
+        # dependency set must be the locked one or nothing.
         #
         # Scoped to this step rather than the workflow `env:` on purpose. Every
         # later step compiles the APK that F-Droid rebuilds and compares
@@ -222,8 +244,8 @@ jobs:
           set -euo pipefail
           cd "$BUILD_DIR"
           export PUB_CACHE="$BUILD_DIR/.pub-cache"
-          dart analyze
-          flutter test
+          dart analyze --fatal-infos --fatal-warnings
+          flutter test --no-pub
 
       - name: Configure signing
         env:

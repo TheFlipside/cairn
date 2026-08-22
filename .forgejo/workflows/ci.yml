@@ -282,10 +282,10 @@ jobs:
           dart format --output=none --set-exit-if-changed .
 
       - name: Analyze
-        # --fatal-infos --fatal-warnings, unlike release.yml's bare
-        # `dart analyze`: bare analyze exits 0 on info-severity diagnostics, and
-        # most very_good_analysis rules are info-severity, so "CI treats lints as
-        # errors" was not actually enforced anywhere.
+        # --fatal-infos --fatal-warnings, matching release.yml: bare analyze
+        # exits 0 on info-severity diagnostics, and most very_good_analysis
+        # rules are info-severity, so "CI treats lints as errors" would not
+        # actually be enforced anywhere. Keep the two in step.
         run: |
           set -euo pipefail
           dart analyze --fatal-infos --fatal-warnings

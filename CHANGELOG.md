@@ -4,25 +4,22 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
-### Fixed
-
-- **The release build ran the tests in the runner's timezone.** `ci.yml` pins
-  `TZ: Europe/Berlin` because the parity fixtures are authored there and Dart
-  takes its zone from the environment; `release.yml` never did. The parity suite
-  is new in 0.3.0, so the release path had never met it — 0.2.3 predates it —
-  and the first tag that reached it failed on a runner in America/New_York, with
-  every sleep night landing a day early. Nothing was built or published: the
-  test step runs before the APK steps.
-
-  The pin is scoped to the "Analyze and test" step rather than the workflow
-  `env:`, unlike ci.yml. Everything after that step compiles the APK F-Droid
-  rebuilds and compares byte-for-byte, and a verification failure publishes
-  nothing at all. The build inherits the runner's zone today and verifies
-  against a buildserver with its own, so the bytes are evidently
-  zone-independent — but only the tests need Berlin, and the one workflow where
-  being wrong is silent is not the place to confirm that.
-
 ### Changed
+
+- **The release pipeline now runs the same gate as CI.** `release.yml` checked
+  formatting not at all and ran a bare `dart analyze`, which exits 0 on
+  info-severity diagnostics — and most `very_good_analysis` rules are
+  info-severity, so a release could ship exactly what CI rejects. It also ran
+  `flutter test` without `--no-pub`, leaving room for an implicit resolution
+  that would not carry the `--enforce-lockfile` of the step above it; on the
+  workflow that builds the reference binary, the dependency set must be the
+  locked one or nothing.
+
+  The format gate matters more than it looks. `ci.yml` fires on branch pushes
+  and never on a tag, so a commit tagged without first landing on a branch — or
+  tagged before its branch run finishes — reached a release with no format check
+  at all. All three checks are source-only and run before the APK steps, so none
+  of them can move the bytes F-Droid rebuilds.
 
 - **The F-Droid recipe carries 0.3.0.** Three `Builds:` blocks appended, one per
   ABI, at version codes 91/92/93 — `base × 10 + {1,2,3}`, matching the
@@ -42,6 +39,24 @@ All notable changes to this project are documented in this file.
   would have surfaced as a formatting diff in fdroiddata's CI; cloning the
   blocks would have doubled it from three occurrences to six. The file is now
   the tool's own output, and `fdroid rewritemeta` is a no-op against it.
+
+### Fixed
+
+- **The release build ran the tests in the runner's timezone.** `ci.yml` pins
+  `TZ: Europe/Berlin` because the parity fixtures are authored there and Dart
+  takes its zone from the environment; `release.yml` never did. The parity suite
+  is new in 0.3.0, so the release path had never met it — 0.2.3 predates it —
+  and the first tag that reached it failed on a runner in America/New_York, with
+  every sleep night landing a day early. Nothing was built or published: the
+  test step runs before the APK steps.
+
+  The pin is scoped to the "Analyze and test" step rather than the workflow
+  `env:`, unlike ci.yml. Everything after that step compiles the APK F-Droid
+  rebuilds and compares byte-for-byte, and a verification failure publishes
+  nothing at all. The build inherits the runner's zone today and verifies
+  against a buildserver with its own, so the bytes are evidently
+  zone-independent — but only the tests need Berlin, and the one workflow where
+  being wrong is silent is not the place to confirm that.
 
 ## 0.3.0 — 2026-08-22
 
