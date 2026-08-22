@@ -57,10 +57,13 @@ final class NextcloudSyncCoordinator {
   ///
   /// SECURITY: every failure here MUST surface as a [NextcloudSyncException]
   /// (a controlled message), never a raw error. The connect UI shows the raw
-  /// text of any *other* exception type for diagnostics, so an unwrapped throw
-  /// from `auth.poll` or `tokenStore.writeCredentials` could leak the app
-  /// password into a visible message. Both collaborators uphold this today
-  /// (network/parse/secure-storage errors are wrapped); preserve it on change.
+  /// text of anything else for diagnostics, so an unwrapped throw from
+  /// `auth.poll` or `tokenStore.writeCredentials` could leak the app password
+  /// into a visible message. That now covers `Error` as well as `Exception`:
+  /// the UI's catch was widened to `on Object`, so a raw `Error` is displayed
+  /// just as an unwrapped `Exception` would be. Both collaborators uphold this
+  /// today (network/parse/secure-storage errors are wrapped); preserve it on
+  /// change.
   Future<NextcloudCredentials?> pollAndStore(LoginFlowSession session) async {
     final credentials = await auth.poll(session);
     if (credentials != null) {

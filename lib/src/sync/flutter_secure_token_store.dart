@@ -41,6 +41,7 @@ final class FlutterSecureTokenStore implements SecureTokenStore {
         throw NextcloudSyncException(
           'Could not save credentials to secure storage: '
           '${retryError.message ?? retryError.code}',
+          kind: SyncErrorKind.credentialStorage,
         );
       }
     }

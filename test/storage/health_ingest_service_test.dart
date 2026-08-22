@@ -16,6 +16,9 @@ class _FakeRepository implements HealthRepository {
   final List<({HealthMetric metric, DateTime start, DateTime end})> reads = [];
 
   @override
+  Future<bool> isAvailable() async => true;
+
+  @override
   Future<Set<HealthMetric>> requestAuthorization(
     Set<HealthMetric> metrics,
   ) async => metrics;

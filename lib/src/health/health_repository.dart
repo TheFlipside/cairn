@@ -9,6 +9,13 @@ import 'package:cairn/src/health/health_sample.dart';
 /// can be mocked in tests (DESIGN.md §13). Implementations wrap the `health`
 /// package.
 abstract interface class HealthRepository {
+  /// Whether the OS health store is present and usable on this device.
+  ///
+  /// `false` only on Android, when Health Connect is missing or its provider
+  /// needs an update. Every read then fails, so the UI reports it as its own
+  /// outcome rather than as a generic read error.
+  Future<bool> isAvailable();
+
   /// Requests read authorisation for [metrics] and returns the subset granted.
   ///
   /// Callers must handle partial grants gracefully and must not depend on a
@@ -23,4 +30,20 @@ abstract interface class HealthRepository {
     required DateTime start,
     required DateTime end,
   });
+}
+
+/// Thrown when the OS health store cannot be reached at all — on Android, when
+/// Health Connect is absent or its provider needs an update.
+///
+/// Distinct from a failed *read*: nothing is wrong with the request, the store
+/// simply is not there, and the user has to act on the device before any read
+/// can work.
+class HealthStoreUnavailableException implements Exception {
+  /// Creates the exception.
+  const HealthStoreUnavailableException();
+
+  @override
+  String toString() =>
+      'HealthStoreUnavailableException: '
+      'the OS health store is not available on this device';
 }

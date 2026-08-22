@@ -38,19 +38,62 @@ class RemoteResource {
   }
 }
 
+/// What kind of failure a [NextcloudSyncException] describes.
+///
+/// The exception's [NextcloudSyncException.message] is an English diagnostic
+/// for logs and bug reports; this enum is what the UI switches on to pick a
+/// translated sentence, so no server-facing string ever reaches the screen.
+enum SyncErrorKind {
+  /// The user typed (or the server returned) a non-`https` address.
+  hostNotHttps,
+
+  /// The server could not be reached — DNS, socket or connection failure.
+  network,
+
+  /// The server accepted the connection but did not answer in time.
+  timedOut,
+
+  /// A Login Flow v2 step was refused by the server.
+  loginFailed,
+
+  /// The response was not the JSON/XML shape the protocol requires.
+  malformedResponse,
+
+  /// The server refused the request with an unexpected HTTP status.
+  serverRejected,
+
+  /// The requested file does not exist on the server.
+  notFound,
+
+  /// A download exceeded the size ceiling before it finished.
+  tooLarge,
+
+  /// The device's secure storage refused to hold the app password.
+  credentialStorage,
+
+  /// Anything else — reported to the user as a plain "sync failed".
+  unknown,
+}
+
 /// Base class for failures talking to the Nextcloud WebDAV endpoint.
 class NextcloudSyncException implements Exception {
   /// Creates a sync exception with a human-readable [message] and optional
   /// HTTP [statusCode]. Set [retryable] for transient failures (a timeout or
   /// network/DNS blip) that a polling caller may retry rather than abort on.
+  /// [kind] is what the UI translates; [message] stays English, for logs.
   const NextcloudSyncException(
     this.message, {
+    this.kind = SyncErrorKind.unknown,
     this.statusCode,
     this.retryable = false,
   });
 
-  /// Description of what failed.
+  /// English description of what failed — for logs and bug reports, never for
+  /// display. Use [kind] to pick a translated message instead.
   final String message;
+
+  /// The machine-readable category, which the UI maps to a translated string.
+  final SyncErrorKind kind;
 
   /// The offending HTTP status code, if the failure was an HTTP response.
   final int? statusCode;
@@ -69,7 +112,7 @@ class NextcloudSyncException implements Exception {
 class NextcloudNotFoundException extends NextcloudSyncException {
   /// Creates a not-found exception for [path].
   const NextcloudNotFoundException(String path)
-    : super('Not found: $path', statusCode: 404);
+    : super('Not found: $path', kind: SyncErrorKind.notFound, statusCode: 404);
 }
 
 /// Remote Nextcloud target for the `/Cairn/` file tree, spoken over WebDAV on

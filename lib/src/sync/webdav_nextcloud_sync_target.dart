@@ -60,6 +60,7 @@ final class WebDavNextcloudSyncTarget implements NextcloudSyncTarget {
     if (response.statusCode != 201 && response.statusCode != 204) {
       throw NextcloudSyncException(
         'PUT $remotePath failed',
+        kind: SyncErrorKind.serverRejected,
         statusCode: response.statusCode,
       );
     }
@@ -79,6 +80,7 @@ final class WebDavNextcloudSyncTarget implements NextcloudSyncTarget {
     if (response.statusCode != 207) {
       throw NextcloudSyncException(
         'PROPFIND $remoteDir failed',
+        kind: SyncErrorKind.serverRejected,
         statusCode: response.statusCode,
       );
     }
@@ -93,7 +95,11 @@ final class WebDavNextcloudSyncTarget implements NextcloudSyncTarget {
     try {
       streamed = await _client.send(request).timeout(_requestTimeout);
     } on TimeoutException {
-      throw NextcloudSyncException('GET $remotePath timed out');
+      throw NextcloudSyncException(
+        'GET $remotePath timed out',
+        kind: SyncErrorKind.timedOut,
+        retryable: true,
+      );
     }
     // Read the body with a hard ceiling so a hostile or misconfigured response
     // (even on an error status) can't exhaust memory before a size check runs.
@@ -103,7 +109,10 @@ final class WebDavNextcloudSyncTarget implements NextcloudSyncTarget {
     await for (final chunk in streamed.stream) {
       builder.add(chunk);
       if (maxBytes != null && builder.length > maxBytes) {
-        throw NextcloudSyncException('GET $remotePath too large');
+        throw NextcloudSyncException(
+          'GET $remotePath too large',
+          kind: SyncErrorKind.tooLarge,
+        );
       }
     }
     if (streamed.statusCode == 404) {
@@ -112,6 +121,7 @@ final class WebDavNextcloudSyncTarget implements NextcloudSyncTarget {
     if (streamed.statusCode != 200) {
       throw NextcloudSyncException(
         'GET $remotePath failed',
+        kind: SyncErrorKind.serverRejected,
         statusCode: streamed.statusCode,
       );
     }
@@ -129,6 +139,7 @@ final class WebDavNextcloudSyncTarget implements NextcloudSyncTarget {
       if (code != 201 && code != 405 && code != 301) {
         throw NextcloudSyncException(
           'MKCOL $dir failed',
+          kind: SyncErrorKind.serverRejected,
           statusCode: code,
         );
       }
@@ -143,7 +154,10 @@ final class WebDavNextcloudSyncTarget implements NextcloudSyncTarget {
     try {
       doc = XmlDocument.parse(body);
     } on XmlException {
-      throw const NextcloudSyncException('Malformed PROPFIND response');
+      throw const NextcloudSyncException(
+        'Malformed PROPFIND response',
+        kind: SyncErrorKind.malformedResponse,
+      );
     }
     final self = _trimSlash(Uri.decodeFull(selfPath));
     final resources = <RemoteResource>[];
@@ -195,7 +209,11 @@ final class WebDavNextcloudSyncTarget implements NextcloudSyncTarget {
       final streamed = await _client.send(request).timeout(_requestTimeout);
       return http.Response.fromStream(streamed);
     } on TimeoutException {
-      throw NextcloudSyncException('$method ${url.path} timed out');
+      throw NextcloudSyncException(
+        '$method ${url.path} timed out',
+        kind: SyncErrorKind.timedOut,
+        retryable: true,
+      );
     }
   }
 

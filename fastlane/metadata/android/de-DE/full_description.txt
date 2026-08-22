@@ -5,6 +5,15 @@ IEEE 1752.1 JSON) in deiner eigenen Nextcloud. Du bleibst alleiniger Eigentümer
 deiner Daten: Es gibt keinen zentralen Server und der Entwickler speichert
 nichts.
 
+Voraussetzungen:
+
+* Android 14 oder neuer. Cairn liest über Health Connect, das erst ab Android 14
+  zum System gehört; unter Android 8-13 ist es eine separate Google-App aus dem
+  Play Store, die ein Gerät ohne Play Store nicht installieren kann — die App
+  fände dort also nichts zu lesen.
+* Eine eigene Nextcloud ist optional: Ohne sie liest und zeigt Cairn deine Daten
+  trotzdem, die Dateien bleiben dann nur auf dem Telefon.
+
 Funktionen:
 
 * Liest Puls, Schritte, Gewicht, Schlaf und Workouts — ausschließlich lesend.

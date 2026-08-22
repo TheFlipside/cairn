@@ -1,6 +1,7 @@
 import 'package:cairn/src/health/health_gateway.dart';
 import 'package:cairn/src/health/health_metric.dart';
 import 'package:cairn/src/health/health_package_repository.dart';
+import 'package:cairn/src/health/health_repository.dart';
 import 'package:cairn/src/health/health_sample.dart';
 import 'package:cairn/src/health/health_source.dart';
 import 'package:flutter/services.dart';
@@ -19,12 +20,25 @@ class _FakeGateway implements HealthGateway {
   final Map<HealthMetric, List<HealthSample>> samples;
   final Set<HealthMetric> denyRead;
 
+  /// Whether the store answers as present; `false` mimics a device without
+  /// Health Connect.
+  bool available = true;
+
+  /// When set, [configure] throws it — mimicking the plugin's
+  /// `UnsupportedError` (an `Error`, not an `Exception`).
+  Error? configureError;
+
   int configureCalls = 0;
   Set<HealthMetric>? requestedMetrics;
 
   @override
+  Future<bool> isAvailable() async => available;
+
+  @override
   Future<void> configure() async {
     configureCalls++;
+    final error = configureError;
+    if (error != null) throw error;
   }
 
   @override
@@ -130,5 +144,62 @@ void main() {
     );
 
     expect(samples, isEmpty);
+  });
+
+  group('when the health store is not available', () {
+    // A device without Health Connect. The plugin's own signal for this is an
+    // UnsupportedError — an Error, which slips through `on Exception` — so the
+    // repository checks first and raises a typed Exception instead.
+    test('authorisation fails with the typed exception, not an Error', () {
+      final gateway = _FakeGateway()..available = false;
+      final repo = HealthPackageRepository(gateway: gateway);
+
+      expect(
+        repo.requestAuthorization({HealthMetric.steps}),
+        throwsA(isA<HealthStoreUnavailableException>()),
+      );
+    });
+
+    test('reading fails with the typed exception too', () {
+      final gateway = _FakeGateway()..available = false;
+      final repo = HealthPackageRepository(gateway: gateway);
+
+      expect(
+        repo.readSamples(metric: HealthMetric.steps, start: t, end: t),
+        throwsA(isA<HealthStoreUnavailableException>()),
+      );
+    });
+
+    test('the plugin is never configured or asked for permissions', () async {
+      final gateway = _FakeGateway()..available = false;
+      final repo = HealthPackageRepository(gateway: gateway);
+
+      await expectLater(
+        repo.requestAuthorization({HealthMetric.steps}),
+        throwsA(isA<HealthStoreUnavailableException>()),
+      );
+
+      expect(gateway.configureCalls, 0);
+      expect(gateway.requestedMetrics, isNull);
+    });
+  });
+
+  test('a failed configure is retried, not cached forever', () async {
+    // Installing Health Connect fixes the cause; the very next refresh has to
+    // be able to succeed, so the failed future must not be remembered.
+    final gateway = _FakeGateway()
+      ..configureError = UnsupportedError('Health Connect unavailable');
+    final repo = HealthPackageRepository(gateway: gateway);
+
+    await expectLater(
+      repo.requestAuthorization({HealthMetric.steps}),
+      throwsUnsupportedError,
+    );
+
+    gateway.configureError = null;
+    final granted = await repo.requestAuthorization({HealthMetric.steps});
+
+    expect(granted, {HealthMetric.steps});
+    expect(gateway.configureCalls, 2);
   });
 }

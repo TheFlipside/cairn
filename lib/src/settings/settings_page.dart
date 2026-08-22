@@ -6,6 +6,7 @@ import 'package:cairn/src/onboarding/setup_guide_page.dart';
 import 'package:cairn/src/profile/profile.dart';
 import 'package:cairn/src/settings/locale_controller.dart';
 import 'package:cairn/src/shell/cairn_services.dart';
+import 'package:cairn/src/shell/sync_error_feedback.dart';
 import 'package:flutter/material.dart';
 
 /// Product settings: Nextcloud connection + a manual "Sync now" (read the
@@ -99,25 +100,33 @@ class _SettingsPageState extends State<SettingsPage> {
       _syncing = true;
       _syncStatus = l10n.settingsSyncing;
     });
-    final result = await widget.services.refresh();
-    final lastSynced = await widget.services.coordinator.lastSyncedAt();
-    if (!mounted) return;
-    setState(() {
-      _syncing = false;
-      _syncStatus = _statusFor(result, l10n);
-      _lastSyncedAt = lastSynced;
-    });
+    try {
+      final result = await widget.services.refresh();
+      final lastSynced = await widget.services.coordinator.lastSyncedAt();
+      if (!mounted) return;
+      setState(() {
+        _syncStatus = _statusFor(result, l10n);
+        _lastSyncedAt = lastSynced;
+      });
+    } finally {
+      // Clearing the flag in `finally` — not after the await — is what keeps
+      // Connect/Disconnect/Sync from staying disabled for the rest of the
+      // process if anything at all escapes the call.
+      if (mounted) setState(() => _syncing = false);
+    }
   }
 
   String _statusFor(RefreshResult result, AppLocalizations l10n) {
     switch (result.status) {
       case RefreshStatus.readFailed:
         return l10n.refreshReadFailed;
+      case RefreshStatus.healthUnavailable:
+        return l10n.refreshHealthUnavailable;
       case RefreshStatus.syncFailed:
-        final detail = result.detail;
-        return detail == null
+        final cause = result.cause;
+        return cause == null
             ? l10n.settingsSyncFailedGeneric
-            : l10n.settingsSyncFailed(detail);
+            : l10n.settingsSyncFailed(cause.localizedMessage(l10n));
       case RefreshStatus.ok:
         final report = result.report;
         // report == null → not connected (read locally, nothing uploaded).

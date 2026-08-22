@@ -1,0 +1,12 @@
+Cairn now requires Android 14 or newer. Health Connect is part of the system
+only from Android 14; below that it is a separate Google app from the Play
+Store, which a Play-less device cannot install — so the app could not read
+anything there.
+
+Fixed: on a phone without Health Connect, Refresh and Sync now report it
+instead of spinning forever. Nextcloud connection and sync errors are shown in
+German in the German app. Sleep totals no longer count time you were awake, and
+the per-stage breakdown no longer double-counts the same minutes.
+
+New: a read-only Cairn app for Nextcloud, so you can view the same files in
+your browser.

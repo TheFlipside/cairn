@@ -165,9 +165,10 @@ final class NextcloudSyncService {
     // Defence in depth: a file resolving outside the root would produce `..`
     // segments and a traversing remote path — refuse rather than upload it.
     if (segments.contains('..')) {
+      // Deliberately left on SyncErrorKind.unknown: a broken invariant, not a
+      // state the user can act on, so it gets the generic "sync failed" text.
       throw NextcloudSyncException(
-        'Refusing to sync path outside the cache: '
-        '${file.path}',
+        'Refusing to sync path outside the cache: ${file.path}',
       );
     }
     return [remoteRoot, ...segments].join('/');
@@ -194,6 +195,8 @@ final class NextcloudSyncService {
     // The Cairn tree is metric/year/day (depth 3); cap recursion so a
     // hostile server can't drive it into a stack overflow.
     if (depth > _maxScanDepth) {
+      // As above: SyncErrorKind.unknown by intent — a hostile or looping server
+      // is nothing the user can fix from this screen.
       throw const NextcloudSyncException('Remote tree too deep to scan');
     }
     for (final child in await target.list(remoteDir)) {

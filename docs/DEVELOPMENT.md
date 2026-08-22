@@ -85,7 +85,10 @@ requirements:
 
 - **Install Android Studio** (bundles the SDK, platform tools, and an emulator
   image), or the command-line SDK.
-- **Already configured (Phase 1), no action needed:** `minSdk = 26`
+- **Already configured, no action needed:** `minSdk = 34` — Health Connect is
+  part of the platform only from Android 14; on Android 8–13 it is Google's
+  separate Play Store app, which a Play-less device cannot install, so the app
+  would read nothing there
   ([`build.gradle.kts`](../android/app/build.gradle.kts)); `MainActivity` extends
   `FlutterFragmentActivity`; and `AndroidManifest.xml` declares the Health
   Connect `<queries>`, the permission-rationale activity, and **READ-only**

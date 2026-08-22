@@ -1,4 +1,6 @@
 import 'package:cairn/l10n/app_localizations.dart';
+import 'package:cairn/src/shell/error_reporting.dart';
+import 'package:cairn/src/shell/sync_error_feedback.dart';
 import 'package:cairn/src/sync/nextcloud_auth.dart';
 import 'package:cairn/src/sync/nextcloud_sync_coordinator.dart';
 import 'package:cairn/src/sync/nextcloud_sync_target.dart';
@@ -74,18 +76,19 @@ class _ConnectNextcloudPageState extends State<ConnectNextcloudPage> {
       setState(() => _status = l10n.connectWaiting);
       await _pollUntilConnected(session, l10n);
     } on NextcloudSyncException catch (error) {
-      _fail(error.message);
+      _fail(error.localizedMessage(l10n));
     } on FormatException catch (error) {
       _fail(l10n.connectInvalidHost(error.message));
-    } on Exception catch (error) {
+    } on Object catch (error, stack) {
       // Fail-closed: any unexpected error must surface, never freeze the UI.
       // The host is user-supplied and network errors aid the user's own
       // diagnosis; the credential-store step is wrapped in a typed
       // NextcloudSyncException, so no secret reaches this generic path.
+      reportIfBug(error, stack, whileDoing: 'starting Login Flow v2');
       _fail(l10n.connectGenericError('$error'));
     } finally {
-      // Last resort: if a non-Exception Error escaped (it still propagates to
-      // the zone handler), at least re-enable the UI so the button isn't stuck.
+      // Last resort: whatever path we left by, re-enable the UI so the button
+      // is never stuck.
       if (mounted && (_busy || _polling)) {
         setState(() {
           _busy = false;
@@ -111,17 +114,20 @@ class _ConnectNextcloudPageState extends State<ConnectNextcloudPage> {
         }
       } on NextcloudSyncException catch (error) {
         if (!error.retryable) {
-          _fail(error.message);
+          _fail(error.localizedMessage(l10n));
           return;
         }
         // Transient network/DNS/timeout blip (common on emulators) — show the
         // cause but keep polling until the deadline rather than aborting.
         if (mounted) {
-          setState(() => _status = l10n.connectRetrying(error.message));
+          setState(
+            () => _status = l10n.connectRetrying(error.localizedMessage(l10n)),
+          );
         }
-      } on Exception catch (error) {
+      } on Object catch (error, stack) {
         // Fail-closed: e.g. a secure-storage PlatformException on the store
         // step must show a message, not leave the screen stuck "waiting".
+        reportIfBug(error, stack, whileDoing: 'completing Login Flow v2');
         _fail(l10n.connectCompleteError('$error'));
         return;
       }

@@ -5,6 +5,7 @@ import 'package:cairn/src/profile/profile.dart';
 import 'package:cairn/src/profile/profile_store.dart';
 import 'package:cairn/src/profile/profile_sync.dart';
 import 'package:cairn/src/query/health_query_service.dart';
+import 'package:cairn/src/shell/error_reporting.dart';
 import 'package:cairn/src/storage/health_ingest_service.dart';
 import 'package:cairn/src/storage/jsonl_omh_file_store.dart';
 import 'package:cairn/src/sync/flutter_secure_token_store.dart';
@@ -29,22 +30,29 @@ enum RefreshStatus {
   /// Reading from the OS health store failed; nothing was saved.
   readFailed,
 
+  /// The OS health store is not available at all (Android: Health Connect is
+  /// missing or its provider needs an update), so nothing could be read.
+  healthUnavailable,
+
   /// Data was saved locally but the upload to Nextcloud failed.
   syncFailed,
 }
 
-/// The result of a refresh: a [status], an optional raw [detail] (a technical
-/// cause, not localised), and the [report] of the push when one ran.
+/// The result of a refresh: a [status], the typed [cause] when the push failed,
+/// and the [report] of the push when one ran.
 @immutable
 class RefreshResult {
   /// Creates a refresh result.
-  const RefreshResult(this.status, {this.detail, this.report});
+  const RefreshResult(this.status, {this.cause, this.report});
 
   /// The high-level outcome.
   final RefreshStatus status;
 
-  /// The raw error cause, when [status] is a failure.
-  final String? detail;
+  /// The typed sync failure, when [status] is [RefreshStatus.syncFailed] and
+  /// the cause was a recognised one. The UI translates its
+  /// `NextcloudSyncException.kind`; the English `message` is for logs only.
+  /// `null` for an unexpected error, which is reported generically.
+  final NextcloudSyncException? cause;
 
   /// The push report when [status] is [RefreshStatus.ok] and a sync ran;
   /// `null` when not connected to Nextcloud (read happened, nothing uploaded).
@@ -153,12 +161,18 @@ final class CairnServices {
     try {
       final pulled = await profileSync.pull();
       if (pulled != null) profile.value = pulled;
-    } on Exception catch (error) {
+    } on Object catch (error, stack) {
       debugPrint('Profile pull failed: $error');
+      reportIfBug(error, stack, whileDoing: 'pulling profile.json');
     }
   }
 
   Future<RefreshResult> _runRefresh() async {
+    // Both catch blocks below are `on Object`, not `on Exception`: the health
+    // plugin signals a missing Health Connect with an UnsupportedError, which
+    // is an Error. Letting one escape would complete this future with an error,
+    // so every caller's `await refresh()` would throw before it could clear its
+    // spinner — the UI would hang with no message at all.
     try {
       final granted = await repository.requestAuthorization(
         HealthMetric.values.toSet(),
@@ -167,10 +181,13 @@ final class CairnServices {
         repository: repository,
         store: store,
       ).ingest(granted);
-    } on Exception catch (error) {
+    } on HealthStoreUnavailableException {
+      return const RefreshResult(RefreshStatus.healthUnavailable);
+    } on Object catch (error, stack) {
       // Don't surface a raw exception string to the UI — it could, in
       // principle, carry sensitive data. Log it for diagnosis instead.
       debugPrint('Health read failed: $error');
+      reportIfBug(error, stack, whileDoing: 'reading the OS health store');
       return const RefreshResult(RefreshStatus.readFailed);
     }
     // New local data is on disk → refresh the screens even if the upload fails.
@@ -179,11 +196,14 @@ final class CairnServices {
     try {
       if (await coordinator.isConnected()) report = await coordinator.syncNow();
     } on NextcloudSyncException catch (error) {
-      // NextcloudSyncException.message is a controlled, non-sensitive string.
-      return RefreshResult(RefreshStatus.syncFailed, detail: error.message);
-    } on Exception catch (error) {
+      // The typed kind travels to the UI, which translates it; the English
+      // message stays in the log.
+      debugPrint('Sync failed: ${error.message}');
+      return RefreshResult(RefreshStatus.syncFailed, cause: error);
+    } on Object catch (error, stack) {
       // Unexpected/untyped error → generic message; never echo the raw cause.
       debugPrint('Sync failed: $error');
+      reportIfBug(error, stack, whileDoing: 'pushing to Nextcloud');
       return const RefreshResult(RefreshStatus.syncFailed);
     }
     // report == null → not connected (read succeeded, nothing uploaded).

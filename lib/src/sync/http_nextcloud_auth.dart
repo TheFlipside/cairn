@@ -33,6 +33,7 @@ final class HttpNextcloudAuth implements NextcloudAuth {
     if (host.scheme != 'https') {
       throw NextcloudSyncException(
         'Nextcloud host must be https, got "${host.scheme}"',
+        kind: SyncErrorKind.hostNotHttps,
       );
     }
     final url = host.replace(
@@ -47,6 +48,7 @@ final class HttpNextcloudAuth implements NextcloudAuth {
     if (response.statusCode != 200) {
       throw NextcloudSyncException(
         'Login Flow v2 init failed',
+        kind: SyncErrorKind.loginFailed,
         statusCode: response.statusCode,
       );
     }
@@ -69,6 +71,7 @@ final class HttpNextcloudAuth implements NextcloudAuth {
     if (code != 200) {
       throw NextcloudSyncException(
         'Login Flow v2 poll failed',
+        kind: SyncErrorKind.loginFailed,
         statusCode: code,
       );
     }
@@ -90,16 +93,19 @@ final class HttpNextcloudAuth implements NextcloudAuth {
     } on TimeoutException {
       throw const NextcloudSyncException(
         'Login Flow v2 request timed out',
+        kind: SyncErrorKind.timedOut,
         retryable: true,
       );
     } on http.ClientException catch (error) {
       throw NextcloudSyncException(
         'network error: ${error.message}',
+        kind: SyncErrorKind.network,
         retryable: true,
       );
     } on SocketException catch (error) {
       throw NextcloudSyncException(
         'network error: ${error.message}',
+        kind: SyncErrorKind.network,
         retryable: true,
       );
     }
@@ -110,14 +116,20 @@ final class HttpNextcloudAuth implements NextcloudAuth {
     final login = json['login'];
     final poll = json['poll'];
     if (login is! String || poll is! Map<String, Object?>) {
-      throw const NextcloudSyncException('Malformed Login Flow v2 response');
+      throw const NextcloudSyncException(
+        'Malformed Login Flow v2 response',
+        kind: SyncErrorKind.malformedResponse,
+      );
     }
     final token = poll['token'];
     final endpoint = poll['endpoint'];
     final loginUrl = Uri.tryParse(login);
     final pollEndpoint = endpoint is String ? Uri.tryParse(endpoint) : null;
     if (token is! String || loginUrl == null || pollEndpoint == null) {
-      throw const NextcloudSyncException('Malformed Login Flow v2 response');
+      throw const NextcloudSyncException(
+        'Malformed Login Flow v2 response',
+        kind: SyncErrorKind.malformedResponse,
+      );
     }
     // The server controls these URLs; pin them to the https host we contacted
     // so a malicious response can neither redirect the browser hand-off to a
@@ -136,6 +148,7 @@ final class HttpNextcloudAuth implements NextcloudAuth {
     if (url.scheme != 'https' || !_serverHostAllowed(url.host, host.host)) {
       throw NextcloudSyncException(
         'Login Flow v2 $label must be https on ${host.host}',
+        kind: SyncErrorKind.hostNotHttps,
       );
     }
   }
@@ -167,17 +180,24 @@ final class HttpNextcloudAuth implements NextcloudAuth {
     final loginName = json['loginName'];
     final appPassword = json['appPassword'];
     if (server is! String || loginName is! String || appPassword is! String) {
-      throw const NextcloudSyncException('Malformed Login Flow v2 poll result');
+      throw const NextcloudSyncException(
+        'Malformed Login Flow v2 poll result',
+        kind: SyncErrorKind.malformedResponse,
+      );
     }
     final uri = Uri.tryParse(server);
     if (uri == null) {
-      throw const NextcloudSyncException('Malformed server URL in poll result');
+      throw const NextcloudSyncException(
+        'Malformed server URL in poll result',
+        kind: SyncErrorKind.malformedResponse,
+      );
     }
     // Validate the scheme here so the (https-enforcing) credentials
     // constructor never has to throw.
     if (uri.scheme != 'https') {
       throw NextcloudSyncException(
         'Nextcloud server must be https, got "${uri.scheme}"',
+        kind: SyncErrorKind.hostNotHttps,
       );
     }
     return NextcloudCredentials(
@@ -192,12 +212,15 @@ final class HttpNextcloudAuth implements NextcloudAuth {
     try {
       decoded = jsonDecode(body);
     } on FormatException {
-      throw const NextcloudSyncException('Login Flow v2 response is not JSON');
+      throw const NextcloudSyncException(
+        'Login Flow v2 response is not JSON',
+        kind: SyncErrorKind.malformedResponse,
+      );
     }
     if (decoded is! Map<String, Object?>) {
       throw const NextcloudSyncException(
-        'Login Flow v2 response is not an '
-        'object',
+        'Login Flow v2 response is not an object',
+        kind: SyncErrorKind.malformedResponse,
       );
     }
     return decoded;

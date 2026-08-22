@@ -89,12 +89,18 @@ class _HomePageState extends State<HomePage> {
     final messenger = ScaffoldMessenger.of(context);
     final l10n = AppLocalizations.of(context);
     setState(() => _busy = true);
-    final result = await widget.services.refresh(); // bump reloads via _reload
-    if (!mounted) return;
-    setState(() => _busy = false);
-    final message = result.localizedMessage(l10n);
-    if (message != null) {
-      messenger.showSnackBar(SnackBar(content: Text(message)));
+    try {
+      // The bump inside refresh() reloads the cards via _reload.
+      final result = await widget.services.refresh();
+      if (!mounted) return;
+      final message = result.localizedMessage(l10n);
+      if (message != null) {
+        messenger.showSnackBar(SnackBar(content: Text(message)));
+      }
+    } finally {
+      // In `finally` so the spinner can never be left turning if anything
+      // escapes the call.
+      if (mounted) setState(() => _busy = false);
     }
   }
 

@@ -3,6 +3,15 @@ Health on iOS, Health Connect on Android — and saves it as plain, open-format
 files (Open mHealth / IEEE 1752.1 JSON) in your own Nextcloud. You stay the sole
 owner of your data: there is no central server and the developer stores nothing.
 
+Requirements:
+
+* Android 14 or newer. Cairn reads through Health Connect, which is part of the
+  system only from Android 14; on Android 8-13 it is a separate Google app from
+  the Play Store, which a Play-less device cannot install — so the app would
+  find nothing to read.
+* A Nextcloud of your own is optional: without one, Cairn still reads and shows
+  your data, it just keeps the files on the phone.
+
 Features:
 
 * Reads heart rate, steps, body weight, sleep and workouts — read-only. Cairn

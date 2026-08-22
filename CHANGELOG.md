@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented in this file.
 
-## Unreleased
+## 0.3.0 — 2026-08-22
 
 ### Added
 
@@ -552,6 +552,18 @@ All notable changes to this project are documented in this file.
 
 ### Changed
 
+- **`minSdkVersion` is now 34 (Android 14).** Health Connect is part of the
+  platform only from Android 14; on Android 8-13 it is Google's separate Play
+  Store app, so a Play-less device could install Cairn and then find nothing to
+  read — the app declared support it could not deliver. Requiring 14 makes the
+  promise true on every device that can install it, and keeps the F-Droid build
+  free of a non-free dependency. The cost is real and deliberate: Android 8-13
+  devices that *do* have Health Connect can no longer install Cairn.
+
+  The store descriptions state the requirement in both languages, and the
+  in-app setup guide no longer tells Android 8-13 users to fetch Health Connect
+  from the Play Store — on a supported device there is nothing to install.
+
 - **The app store now publishes a project contact, not a personal one.**
   `info.xml` carried a personal address, and the app store shows it to every
   self-hoster who installs the app. Releases come from the `LuminaAppsDev`
@@ -671,6 +683,49 @@ All notable changes to this project are documented in this file.
   fdroidserver from git master rather than using the Debian package.
 
 ### Fixed
+
+- **Refresh and sync never finished on a device without Health Connect.** The
+  `health` plugin signals a missing Health Connect with an `UnsupportedError` —
+  an `Error`, not an `Exception` — so the `on Exception` catch in
+  `CairnServices._runRefresh` did not see it and the refresh future completed
+  with an error instead of a result. Every caller awaits that future before
+  clearing its own flag, so the Home spinner turned forever and Settings sat on
+  "Syncing…" with Connect, Disconnect and Sync now all disabled until the
+  process was restarted. Reported from an Android 13 device, where Health
+  Connect was absent.
+
+  Three changes, because one alone would only have moved the failure: the
+  repository asks whether the store is available and raises a typed
+  `HealthStoreUnavailableException` before the plugin can throw its `Error`; the
+  refresh catches `Object` rather than `Exception`, so nothing at all escapes
+  it; and Home and Settings clear their busy flag in a `finally`, so a future
+  escape disables no buttons. A new `RefreshStatus.healthUnavailable` carries
+  the case to the UI, which now says Health Connect is unavailable instead of
+  showing a generic read error — or nothing.
+
+  A failed `configure()` is also no longer cached. It was stored in
+  `_configuring` and re-awaited by every later call, so a device that gained
+  Health Connect after the first attempt could never pick it up without a
+  restart.
+
+  Catching `Object` has a cost, though: a genuine bug — a `TypeError`, a failed
+  assertion — lands in the same bucket as an expected failure and is shown to
+  the user as a benign "could not read", leaving nothing behind but a
+  `debugPrint`. So `reportIfBug` now sorts the two: an `Exception` is an
+  expected outcome and passes quietly, anything else is handed to Flutter's
+  error machinery, where uncaught errors already go. It is reported rather than
+  rethrown, so the user still gets their message and the bug still surfaces.
+
+- **Nextcloud errors stayed English in the German UI.** Connect and sync
+  failures rendered the exception's own message — "Login Flow v2 init failed",
+  "network error: …" — which is written for a log, not for a user, and was the
+  one part of an otherwise fully translated interface that never switched
+  language. `NextcloudSyncException` now carries a `SyncErrorKind` alongside the
+  English text, and the UI translates the kind: the message keeps serving logs
+  and bug reports, and nothing server-facing reaches the screen. Where the
+  server gave an HTTP status it is appended, since a number is language-neutral
+  and is the most useful thing to quote when asking for help; 401 and 403 are
+  recognised as an expired app password rather than reported as a bare status.
 
 - **`wait_for_install` reported timeouts into `/dev/null`.** It ended in `die`,
   and every caller runs it inside a conditional with output suppressed — so a

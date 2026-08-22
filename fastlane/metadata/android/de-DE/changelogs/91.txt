@@ -1,0 +1,13 @@
+Cairn setzt jetzt Android 14 oder neuer voraus. Health Connect gehört erst ab
+Android 14 zum System; darunter ist es eine separate Google-App aus dem Play
+Store, die ein Gerät ohne Play Store nicht installieren kann — die App konnte
+dort also nichts lesen.
+
+Behoben: Auf einem Telefon ohne Health Connect melden „Aktualisieren“ und
+„Synchronisieren“ das jetzt, statt endlos zu laden. Fehler beim Verbinden und
+Synchronisieren mit Nextcloud erscheinen in der deutschen App auf Deutsch. Die
+Schlafsummen zählen keine Wachzeit mehr mit, und die Aufschlüsselung nach
+Schlafphasen zählt dieselben Minuten nicht mehr doppelt.
+
+Neu: eine schreibgeschützte Cairn-App für Nextcloud, mit der du dieselben
+Dateien im Browser ansehen kannst.

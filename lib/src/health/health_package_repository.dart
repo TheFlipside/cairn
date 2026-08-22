@@ -28,9 +28,13 @@ final class HealthPackageRepository implements HealthRepository {
   Future<void>? _configuring;
 
   @override
+  Future<bool> isAvailable() => _gateway.isAvailable();
+
+  @override
   Future<Set<HealthMetric>> requestAuthorization(
     Set<HealthMetric> metrics,
   ) async {
+    await _requireAvailable();
     await _ensureConfigured();
     await _gateway.requestReadAuthorization(metrics);
 
@@ -49,6 +53,7 @@ final class HealthPackageRepository implements HealthRepository {
     required DateTime start,
     required DateTime end,
   }) async {
+    await _requireAvailable();
     await _ensureConfigured();
     try {
       final samples = await _gateway.readSamples(
@@ -62,7 +67,26 @@ final class HealthPackageRepository implements HealthRepository {
     }
   }
 
+  // Fails with a typed exception rather than letting the plugin throw a raw
+  // UnsupportedError, which — being an Error, not an Exception — slips past
+  // every `on Exception` catch above and leaves the caller's spinner running.
+  Future<void> _requireAvailable() async {
+    if (!await _gateway.isAvailable()) {
+      throw const HealthStoreUnavailableException();
+    }
+  }
+
   // Configures the gateway at most once. Concurrent callers share the single
-  // in-flight future, avoiding a double-configure race.
-  Future<void> _ensureConfigured() => _configuring ??= _gateway.configure();
+  // in-flight future, avoiding a double-configure race. A failed configure is
+  // *not* cached: the cause is usually fixable on the device (Health Connect
+  // installed or updated), so the next call must be free to try again.
+  Future<void> _ensureConfigured() {
+    return _configuring ??= _gateway.configure().onError<Object>((
+      error,
+      stack,
+    ) {
+      _configuring = null;
+      Error.throwWithStackTrace(error, stack);
+    });
+  }
 }

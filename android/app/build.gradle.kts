@@ -30,8 +30,12 @@ android {
 
     defaultConfig {
         applicationId = "com.luminaapps.cairn"
-        // Health Connect requires Android 8.0 (API 26); see DEVELOPMENT.md §3.3.
-        minSdk = 26
+        // Health Connect ships as part of the platform only from Android 14
+        // (API 34). Below that it is Google's separate Play Store app, which a
+        // Play-less device cannot install at all — so the app would read
+        // nothing. Require 34 rather than ship an install that cannot work.
+        // See DEVELOPMENT.md §3.3.
+        minSdk = 34
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

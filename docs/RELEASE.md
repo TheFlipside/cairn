@@ -628,7 +628,11 @@ Source: [`fdroidserver` / Setup an F-Droid app repo](https://f-droid.org/en/docs
 
 ### Cairn F-Droid notes
 
-- `minSdk = 26` (Health Connect). Fine for F-Droid.
+- `minSdk = 34` — Health Connect is bundled with the platform from Android 14
+  only. On Android 8–13 it is Google's proprietary Play Store app, so a
+  Play-less F-Droid device could install Cairn and then read nothing; requiring
+  34 keeps the F-Droid build free of a non-free dependency instead of shipping a
+  broken install.
 - If you bump the `health` package, re-check it pulls in no non-free transitive
   dependency (would block official inclusion).
 - Background sync (WorkManager) and `READ_HEALTH_DATA_IN_BACKGROUND` are fine on

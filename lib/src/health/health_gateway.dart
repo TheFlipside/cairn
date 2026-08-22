@@ -11,6 +11,13 @@ import 'package:health/health.dart';
 /// repository — and everything above it — never depends on the plugin. The
 /// real implementation is [HealthPackageGateway]; tests provide a fake.
 abstract interface class HealthGateway {
+  /// Whether the platform health store can be talked to at all.
+  ///
+  /// Android only in practice: Health Connect may be missing or need a provider
+  /// update, in which case every other call throws. Always `true` on iOS, where
+  /// HealthKit is part of the OS.
+  Future<bool> isAvailable();
+
   /// Initialises the underlying plugin; must run before any other operation.
   Future<void> configure();
 
@@ -41,6 +48,9 @@ final class HealthPackageGateway implements HealthGateway {
 
   final Health _health;
   final bool _isIos;
+
+  @override
+  Future<bool> isAvailable() => _health.isHealthConnectAvailable();
 
   @override
   Future<void> configure() => _health.configure();
