@@ -4,7 +4,30 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+### Added
+
+- **The counter-signed code-signing certificate, committed at
+  `nextcloud_app/cairn.crt`.** It carries nothing secret, and keeping it in the
+  repository means anyone can verify a release signature against the same
+  certificate the app store used. `dev package` now finds it there by default,
+  so the private key — which never enters this repository, and which
+  `.githooks/pre-commit` refuses — is the only secret the release path needs.
+
+  `tests/validate_certificate.php` checks it on every `dev check`, for two
+  failures that are otherwise quiet until they are expensive. A certificate
+  naming a different app id produces signatures the store rejects at upload,
+  long after the release was cut. And expiry is a time bomb: this one is good
+  until 2036, so nothing goes wrong until one day releases stop being accepted
+  and nobody remembers why — the check warns 90 days out. It also refuses the
+  file outright if a private key ever appears in it, and says so in those words,
+  because that file is public. All three were verified by planting each mistake
+  in turn.
+
 ### Changed
+
+- **Phase 7 is complete: the Nextcloud web app is published on the app store.**
+  `docs/DESIGN.md` §15 records the exit criteria as met — it installs on a
+  user's own Nextcloud, renders aggregates from `/Cairn/`, and never writes.
 
 - **The release pipeline now runs the same gate as CI.** `release.yml` checked
   formatting not at all and ran a bare `dart analyze`, which exits 0 on
@@ -52,6 +75,18 @@ All notable changes to this project are documented in this file.
   evidence if the ruamel version matches theirs.
 
 ### Fixed
+
+- **The new seam tests read the wall clock, so they were true only on the day
+  they were written.** Almost every query is defined relative to today, and
+  `QueryFactory` built its own `SystemClock` — so a controller test asserting
+  today's step total passed on 2026-08-20 and failed on the 22nd. Caught by the
+  suite two days later rather than by CI on a quiet morning, which is luck, not
+  design.
+
+  `QueryFactory` now takes an injectable clock, for the same reason the query
+  service already did, and the seam tests pin the date. Checked that nothing
+  else is exposed: the only remaining test that reads the wall clock is the one
+  covering `SystemClock` itself, which asserts a delta rather than a date.
 
 - **The release build ran the tests in the runner's timezone.** `ci.yml` pins
   `TZ: Europe/Berlin` because the parity fixtures are authored there and Dart

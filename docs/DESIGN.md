@@ -393,7 +393,7 @@ because the on-disk format is the one genuinely expensive thing to change
   incl. screenshots, are ready); complete the store declarations/build for any
   other channel(s) pursued.
 
-### Phase 7 — Nextcloud web app (v1.5) 🚧
+### Phase 7 — Nextcloud web app (v1.5) ✅
 
 - **Goal:** an optional, read-only second frontend with server-side
   aggregation.
@@ -411,12 +411,10 @@ because the on-disk format is the one genuinely expensive thing to change
   level 2 with no baseline, and a compatibility matrix (`dev matrix`) that
   installs every claimed Nextcloud major in turn rather than trusting
   `info.xml`. Read-only is enforced statically, not asserted.
-- **Remaining:** the app-store submission itself — requesting the signing
-  certificate Nextcloud counter-signs, registering the app id, and uploading a
-  release. `dev package` and `dev verify-package` build and prove the artefact;
-  what is left needs an account, not code.
-- **Exit:** installs on a user Nextcloud, renders aggregates from `/Cairn/`,
-  never writes.
+- **Exit:** met — **published on the Nextcloud App Store**. It installs on a
+  user's own Nextcloud, renders aggregates from `/Cairn/`, and never writes.
+  The counter-signed certificate is committed at `nextcloud_app/cairn.crt`;
+  the private key is not, and never will be.
 
 ### Phase 8 — Hardening & reach (v2) ⬜
 

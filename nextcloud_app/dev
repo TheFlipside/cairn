@@ -809,14 +809,16 @@ package_assert_clean() {
 package_sign() {
 	local root="$1" key cert
 	key="$(setting CAIRN_SIGN_KEY "${HOME}/.nextcloud/certificates/cairn.key")"
-	cert="$(setting CAIRN_SIGN_CERT "${HOME}/.nextcloud/certificates/cairn.crt")"
+	# The certificate is public and committed, so it is found here by default;
+	# only the private key has to live outside the repository.
+	cert="$(setting CAIRN_SIGN_CERT "${APP_ROOT}/cairn.crt")"
 
 	if [[ ! -f "${key}" || ! -f "${cert}" ]]; then
 		step "Signing"
-		say "  skipped: no signing certificate."
-		say "  An unsigned tarball installs from disk but the app store will not"
-		say "  take it. Requesting a certificate is a one-time step — see"
-		say "  docs/RELEASE.md §6."
+		say "  skipped: no signing key at ${key}."
+		say "  The certificate is committed; the private key is not, and never"
+		say "  will be. An unsigned tarball installs from disk but the app store"
+		say "  will not take it — see docs/RELEASE.md §6."
 		return 0
 	fi
 
@@ -910,6 +912,8 @@ cmd_check() {
 	compose exec -T nextcloud php /var/www/html/custom_apps/cairn/tests/read_only_guard.php
 	step "info.xml"
 	compose exec -T nextcloud php /var/www/html/custom_apps/cairn/tests/validate_info_xml.php
+	step "Signing certificate"
+	compose exec -T nextcloud php /var/www/html/custom_apps/cairn/tests/validate_certificate.php
 }
 
 cmd_reset() {

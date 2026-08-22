@@ -841,12 +841,19 @@ first upload and never again:
    the same account, so the store listing, the issue tracker and the source all
    name one owner.
 
+**The certificate is committed** at `nextcloud_app/cairn.crt`. It carries
+nothing secret, and having it in the repository lets anyone verify a release
+signature against the same certificate the store used. `dev package` finds it
+there by default, and `dev check` verifies it names this app, was counter-signed
+by Nextcloud, and has not expired — an expiry is otherwise silent until releases
+start being rejected years later.
+
 > **The private key never enters this repository.** `.githooks/pre-commit`
 > refuses `*.key`, `*.pem` and `*.p8` outright, alongside the Android signing
-> material. The `.crt` is public and may be committed. Keep the key where the
-> tooling expects it, or point `CAIRN_SIGN_KEY` and `CAIRN_SIGN_CERT` at it.
+> material. Keep it at `~/.nextcloud/certificates/cairn.key`, or point
+> `CAIRN_SIGN_KEY` elsewhere. It is the only secret this release path needs.
 
-With a certificate present, `dev package` additionally writes
+With the private key present, `dev package` additionally writes
 `appinfo/signature.json` into the tarball (Nextcloud's integrity check, via
 `occ integrity:sign-app`) and prints the base64 detached signature the upload
 form asks for. Without one it says so and produces an unsigned tarball, which

@@ -34,9 +34,22 @@ trait BuildsApp {
 
 	protected const ZONE = 'Europe/Berlin';
 
+	/**
+	 * The day every fixture in these tests is written around.
+	 *
+	 * Pinned, because the queries are defined relative to today: reading the
+	 * wall clock would make these pass on the day they were written and fail
+	 * the following week, which is exactly what happened before it was.
+	 */
+	protected const TODAY = '2026-08-20';
+
 	/** @param array<string, string> $tree files under `/Cairn` */
 	protected function queryFactoryFor(array $tree): QueryFactory {
-		return new QueryFactory($this->shardSourceFor($tree), $this->displayTimeZone());
+		return new QueryFactory(
+			$this->shardSourceFor($tree),
+			$this->displayTimeZone(),
+			FixedClock::at(self::TODAY . ' 12:00'),
+		);
 	}
 
 	/** @param array<string, string> $tree */

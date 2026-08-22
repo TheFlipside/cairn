@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 namespace OCA\Cairn\Service;
 
+use OCA\Cairn\Reading\Clock;
 use OCA\Cairn\Reading\HealthQueryService;
 use OCA\Cairn\Reading\SystemClock;
 
@@ -22,9 +23,17 @@ use OCA\Cairn\Reading\SystemClock;
  * the same app disagree about which day a reading belongs to.
  */
 final class QueryFactory {
+	/**
+	 * `$clock` is injectable for the same reason it is on the query service:
+	 * almost every query is defined relative to today, so a test that reads the
+	 * wall clock passes on the day it is written and fails the following week.
+	 * Nextcloud's container supplies only the first two; the default is built
+	 * per call, because it needs the timezone resolved at that moment.
+	 */
 	public function __construct(
 		private readonly NextcloudShardSource $shards,
 		private readonly DisplayTimeZone $timeZone,
+		private readonly ?Clock $clock = null,
 	) {
 	}
 
@@ -33,7 +42,7 @@ final class QueryFactory {
 
 		return new HealthQueryService(
 			shards: new UserShardSource($this->shards, $userId),
-			clock: new SystemClock($display),
+			clock: $this->clock ?? new SystemClock($display),
 			display: $display,
 		);
 	}

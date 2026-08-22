@@ -138,10 +138,12 @@ dev          the entrypoint for all of the above
 
 ## Status
 
-Early, but the engine is real. `lib/Reading/` implements the read semantics of
-`docs/DESIGN.md` §4.3 — last-ingested-wins, source-priority dedup, sleep-episode
-aggregation — with no Nextcloud imports at all, and the current page shows
-figures computed from your actual shards.
+**Published on the [Nextcloud App Store](https://apps.nextcloud.com/).**
+
+`lib/Reading/` implements the read semantics of `docs/DESIGN.md` §4.3 —
+last-ingested-wins, source-priority dedup, sleep-episode aggregation — with no
+Nextcloud imports at all, and the dashboard shows figures computed from your
+own shards.
 
 Those rules are held to the same answers as the Flutter app by the shared
 fixtures in [`test/fixtures/parity/`](../test/fixtures/parity/), which both
@@ -182,9 +184,12 @@ gives the same bytes.
 bind mount of the working tree** — otherwise the check would exercise the code
 on disk while appearing to exercise the artefact.
 
-Signing needs a certificate Nextcloud counter-signs for this app id; the private
-key never enters this repository and the pre-commit hook refuses it. Full
-procedure in [`docs/RELEASE.md` §6](../docs/RELEASE.md).
+`cairn.crt` is the counter-signed certificate the app store verifies releases
+against. It is committed because it carries nothing secret, and having it here
+lets anyone check a release signature against the same certificate the store
+used — `dev check` verifies it names this app, came from Nextcloud, and has not
+expired. The private key never enters this repository and the pre-commit hook
+refuses it. Full procedure in [`docs/RELEASE.md` §6](../docs/RELEASE.md).
 
 ## Licence
 
