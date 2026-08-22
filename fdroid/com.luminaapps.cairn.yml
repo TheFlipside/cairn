@@ -133,7 +133,7 @@ Builds:
 
   - versionName: 0.3.0
     versionCode: 91
-    commit: 08fbd73842ba0da6c73537bcca3eefed795e69e8
+    commit: 5c89cf7c002a18ba7cad59ba92b545e49931bd92
     sudo:
       - mkdir -p /build
       - chown -R vagrant /build
@@ -173,7 +173,7 @@ Builds:
 
   - versionName: 0.3.0
     versionCode: 92
-    commit: 08fbd73842ba0da6c73537bcca3eefed795e69e8
+    commit: 5c89cf7c002a18ba7cad59ba92b545e49931bd92
     sudo:
       - mkdir -p /build
       - chown -R vagrant /build
@@ -213,7 +213,7 @@ Builds:
 
   - versionName: 0.3.0
     versionCode: 93
-    commit: 08fbd73842ba0da6c73537bcca3eefed795e69e8
+    commit: 5c89cf7c002a18ba7cad59ba92b545e49931bd92
     sudo:
       - mkdir -p /build
       - chown -R vagrant /build
