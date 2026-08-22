@@ -4,6 +4,24 @@ All notable changes to this project are documented in this file.
 
 ## Unreleased
 
+### Fixed
+
+- **The release build ran the tests in the runner's timezone.** `ci.yml` pins
+  `TZ: Europe/Berlin` because the parity fixtures are authored there and Dart
+  takes its zone from the environment; `release.yml` never did. The parity suite
+  is new in 0.3.0, so the release path had never met it — 0.2.3 predates it —
+  and the first tag that reached it failed on a runner in America/New_York, with
+  every sleep night landing a day early. Nothing was built or published: the
+  test step runs before the APK steps.
+
+  The pin is scoped to the "Analyze and test" step rather than the workflow
+  `env:`, unlike ci.yml. Everything after that step compiles the APK F-Droid
+  rebuilds and compares byte-for-byte, and a verification failure publishes
+  nothing at all. The build inherits the runner's zone today and verifies
+  against a buildserver with its own, so the bytes are evidently
+  zone-independent — but only the tests need Berlin, and the one workflow where
+  being wrong is silent is not the place to confirm that.
+
 ### Changed
 
 - **The F-Droid recipe carries 0.3.0.** Three `Builds:` blocks appended, one per

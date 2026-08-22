@@ -203,6 +203,21 @@ jobs:
           flutter pub get --enforce-lockfile
 
       - name: Analyze and test
+        # Same pin as ci.yml: the parity fixtures (test/fixtures/parity/) are
+        # authored in Europe/Berlin, and Dart reads its zone from the
+        # environment, so a runner in any other zone buckets the readings into
+        # the wrong days. The suite asserts the offsets itself and fails with
+        # the fix in its message.
+        #
+        # Scoped to this step rather than the workflow `env:` on purpose. Every
+        # later step compiles the APK that F-Droid rebuilds and compares
+        # byte-for-byte; a verification failure publishes nothing. The build
+        # inherits the runner's zone today and verifies against a buildserver
+        # that has its own, so the bytes are evidently zone-independent — but
+        # only the tests actually need Berlin, and there is no reason to put
+        # that to the test on the one workflow where being wrong is silent.
+        env:
+          TZ: Europe/Berlin
         run: |
           set -euo pipefail
           cd "$BUILD_DIR"
