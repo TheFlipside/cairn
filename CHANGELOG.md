@@ -33,12 +33,23 @@ All notable changes to this project are documented in this file.
   any de-duplication would vanish from the submitted copy and return as a CI
   formatting diff.
 
-- **The recipe is canonical again.** Every `binary:` field had its URL wrapped
-  onto a continuation line, leaving a trailing space after the colon —
-  `rewritemeta` writes them inline. The deviation predates this release and
-  would have surfaced as a formatting diff in fdroiddata's CI; cloning the
-  blocks would have doubled it from three occurrences to six. The file is now
-  the tool's own output, and `fdroid rewritemeta` is a no-op against it.
+- **Do not check the recipe's format with a local `fdroid rewritemeta`.** Every
+  `binary:` field wraps its URL onto a continuation line, leaving a trailing
+  space after the colon. That looks like a defect and is not: it is exactly what
+  fdroiddata's CI emits, because `rewritemeta` sets no explicit YAML width, so
+  ruamel's 80-column default applies and the only break point in a long
+  `binary: <url>` line is the space after the key.
+
+  A locally installed fdroidserver need not agree. Ours (2.4.5 on ruamel
+  0.17.21) declines to break after a key and writes the URL inline, so running
+  it "canonicalised" all six fields into the one form their CI rejects — which
+  is how this was found: their pipeline failed on the diff. The wrapped form is
+  restored, and the three 0.3.0 blocks are byte-identical clones of the accepted
+  0.2.3 ones.
+
+  The rule that follows: for this file, fdroiddata's CI is the authority on
+  format, not whatever `fdroid` happens to be on `PATH`. A local run is only
+  evidence if the ruamel version matches theirs.
 
 ### Fixed
 
