@@ -2,6 +2,29 @@
 
 All notable changes to this project are documented in this file.
 
+## Unreleased
+
+### Changed
+
+- **The F-Droid recipe carries 0.3.0.** Three `Builds:` blocks appended, one per
+  ABI, at version codes 91/92/93 — `base × 10 + {1,2,3}`, matching the
+  `abiCodes` map and the `VercodeOperation` list — pinned to the full hash of
+  the commit tagged `v0.3.0`. The 0.2.3 blocks stay: fdroiddata keeps every
+  released version so an old tag remains rebuildable, and 0.2.3 is the seed, the
+  earliest tag whose published APKs can be verified at all.
+
+  The new blocks repeat the build steps verbatim rather than sharing them, which
+  is deliberate and documented — `rewritemeta` expands YAML anchors back out, so
+  any de-duplication would vanish from the submitted copy and return as a CI
+  formatting diff.
+
+- **The recipe is canonical again.** Every `binary:` field had its URL wrapped
+  onto a continuation line, leaving a trailing space after the colon —
+  `rewritemeta` writes them inline. The deviation predates this release and
+  would have surfaced as a formatting diff in fdroiddata's CI; cloning the
+  blocks would have doubled it from three occurrences to six. The file is now
+  the tool's own output, and `fdroid rewritemeta` is a no-op against it.
+
 ## 0.3.0 — 2026-08-22
 
 ### Added
